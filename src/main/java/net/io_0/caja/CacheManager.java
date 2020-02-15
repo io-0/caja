@@ -1,13 +1,23 @@
 package net.io_0.caja;
 
+import io.lettuce.core.RedisClient;
+import io.lettuce.core.api.StatefulRedisConnection;
+import io.lettuce.core.api.async.RedisAsyncCommands;
+import io.lettuce.core.api.sync.RedisCommands;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.io_0.caja.ehcache.AsyncWrapper;
-import net.io_0.caja.ehcache.SyncWrapper;
+import net.io_0.caja.ehcache.EhcacheAsyncWrapper;
+import net.io_0.caja.ehcache.EhcacheSyncWrapper;
+import net.io_0.caja.redis.JDKObjectCodec;
+import net.io_0.caja.redis.RedisAsyncWrapper;
+import net.io_0.caja.redis.RedisSyncWrapper;
 import net.io_0.caja.sync.Cache;
 import net.io_0.caja.sync.LoggingStatisticsCache;
 import org.ehcache.config.builders.CacheManagerBuilder;
 import org.ehcache.config.builders.ExpiryPolicyBuilder;
 import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static java.util.Objects.isNull;
 import static org.ehcache.config.builders.CacheConfigurationBuilder.newCacheConfigurationBuilder;
@@ -77,7 +87,12 @@ public class CacheManager {
    * @throws IllegalArgumentException if a cache under that name exist wit different types
    */
   public <K, V> Cache<K, V> getAsSync(String name, Class<K> keyType, Class<V> valueType, CacheConfig defaultConfig) {
-    return new LoggingStatisticsCache<>(name, SyncWrapper.wrap(getLocalCache(name, keyType, valueType, defaultConfig)));
+    CacheConfig config = this.config.getCacheConfigurations().getOrDefault(name, defaultConfig);
+    return new LoggingStatisticsCache<>(name,
+      config.getHost().isEmpty()
+       ? EhcacheSyncWrapper.wrap(getLocalCache(name, keyType, valueType, config))
+       : RedisSyncWrapper.wrap(getSyncRemoteCache(name, config), config.getTtlInSeconds())
+    );
   }
 
   /**
@@ -94,17 +109,19 @@ public class CacheManager {
    * @throws IllegalArgumentException if a cache under that name exist wit different types
    */
   public <K, V> net.io_0.caja.async.Cache<K, V> getAsAsync(String name, Class<K> keyType, Class<V> valueType, CacheConfig defaultConfig) {
-    return new net.io_0.caja.async.LoggingStatisticsCache<>(name, AsyncWrapper.wrap(getLocalCache(name, keyType, valueType, defaultConfig)));
+    CacheConfig config = this.config.getCacheConfigurations().getOrDefault(name, defaultConfig);
+    return new net.io_0.caja.async.LoggingStatisticsCache<>(name,
+      config.getHost().isEmpty()
+      ? EhcacheAsyncWrapper.wrap(getLocalCache(name, keyType, valueType, config))
+      : RedisAsyncWrapper.wrap(getAsyncRemoteCache(name, config), config.getTtlInSeconds())
+    );
   }
 
-  private <K, V> org.ehcache.Cache<K, V> getLocalCache(String name, Class<K> keyType, Class<V> valueType, CacheConfig defaultConfig) {
+  private <K, V> org.ehcache.Cache<K, V> getLocalCache(String name, Class<K> keyType, Class<V> valueType, CacheConfig config) {
     org.ehcache.Cache<K, V> localCache = localManager.getCache(name, keyType, valueType);
 
     if (isNull(localCache)) {
-      CacheConfig config = this.config.getCacheConfigurations().getOrDefault(name, defaultConfig);
-
-      localCache = localManager.createCache(
-        name,
+      localCache = localManager.createCache(name,
         newCacheConfigurationBuilder(keyType, valueType, heap(config.getHeap()))
           .withExpiry(ExpiryPolicyBuilder.timeToLiveExpiration(Duration.ofSeconds(config.getTtlInSeconds())))
           .build()
@@ -115,7 +132,43 @@ public class CacheManager {
     return localCache;
   }
 
+  private <K, V> RedisCommands<K, V> getSyncRemoteCache(String name, CacheConfig config) {
+    return this.<K, V> getRemoteCacheConnection(name, config).sync();
+  }
+
+  private <K, V> RedisAsyncCommands<K, V> getAsyncRemoteCache(String name, CacheConfig config) {
+    return this.<K, V> getRemoteCacheConnection(name, config).async();
+  }
+
+  @SuppressWarnings("unchecked")
+  private <K, V> StatefulRedisConnection<K, V> getRemoteCacheConnection(String name, CacheConfig config) {
+    String host = config.getHost().orElseThrow();
+    ClientAndConnection<K, V> cAC = (ClientAndConnection<K, V>) knownHosts.get(host);
+
+    if (isNull(cAC)) {
+      RedisClient client = RedisClient.create(host);
+      cAC = new ClientAndConnection<>(client, client.connect(new JDKObjectCodec<>(name)));
+      knownHosts.put(host, cAC);
+      log.trace("{}: created with {}", name, config);
+    }
+
+    return cAC.connection;
+  }
+
+  private Map<String, ClientAndConnection<?, ?>> knownHosts = new ConcurrentHashMap<>();
+
+  @RequiredArgsConstructor
+  static class ClientAndConnection<K, V> {
+    final RedisClient client;
+    final StatefulRedisConnection<K, V> connection;
+  }
+
   public void close() {
     localManager.close();
+
+    knownHosts.values().forEach(cAC -> {
+      cAC.connection.close();
+      cAC.client.shutdown();
+    });
   }
 }

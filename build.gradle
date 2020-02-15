@@ -14,6 +14,7 @@ repositories {
 dependencies {
   implementation 'ch.qos.logback:logback-classic:1.2.3'
   implementation 'org.ehcache:ehcache:3.8.1'
+  implementation 'io.lettuce:lettuce-core:5.2.0.RELEASE'
   testImplementation 'org.junit.jupiter:junit-jupiter-api:5.5.2'
   testImplementation 'org.awaitility:awaitility:4.0.1'
   testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.5.2'

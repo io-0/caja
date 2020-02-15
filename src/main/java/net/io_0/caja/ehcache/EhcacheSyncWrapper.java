@@ -2,7 +2,7 @@ package net.io_0.caja.ehcache;
 
 import net.io_0.caja.sync.Cache;
 
-public class SyncWrapper {
+public class EhcacheSyncWrapper {
   public static <K, V> Cache<K, V> wrap(org.ehcache.Cache<K, V> cache) {
     return new Cache<>() {
       @Override

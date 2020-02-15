@@ -5,7 +5,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static java.util.concurrent.CompletableFuture.completedFuture;
 
-public class AsyncWrapper {
+public class EhcacheAsyncWrapper {
   public static <K, V> Cache<K, V> wrap(org.ehcache.Cache<K, V> cache) {
     return new Cache<>() {
       @Override
