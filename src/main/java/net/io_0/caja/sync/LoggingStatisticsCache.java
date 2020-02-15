@@ -1,4 +1,4 @@
-package net.io_0.caja;
+package net.io_0.caja.sync;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,7 +14,7 @@ public class LoggingStatisticsCache<K, V> implements Cache<K, V> {
   @Override
   public V get(K key) {
     V value = cache.get(key);
-    log.trace("{}: {} value for '{}'", name, nonNull(value)? "got" : "missed", key);
+    log.trace("{}: {} value for '{}'", name, nonNull(value) ? "got" : "missed", key);
     return value;
   }
 

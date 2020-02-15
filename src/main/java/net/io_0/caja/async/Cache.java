@@ -1,9 +1,10 @@
-package net.io_0.caja;
+package net.io_0.caja.async;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
 import static java.util.Objects.nonNull;
+import static java.util.concurrent.CompletableFuture.completedFuture;
 
 /**
  * Defines all operational methods to create, access, update and delete mappings of key to value.
@@ -32,7 +33,7 @@ public interface Cache<K, V> {
    *
    * @throws NullPointerException if the provided key is {@code null}
    */
-  V get(K key);
+  CompletableFuture<V> get(K key);
 
   /**
    * Associates the given value to the given key in this {@code Cache}.
@@ -42,7 +43,7 @@ public interface Cache<K, V> {
    *
    * @throws NullPointerException if either key or value is {@code null}
    */
-  void put(K key, V value);
+  CompletableFuture<Void> put(K key, V value);
 
   /**
    * Checks whether a mapping for the given key is present, without retrieving the associated value.
@@ -52,7 +53,7 @@ public interface Cache<K, V> {
    *
    * @throws NullPointerException if the provided key is {@code null}
    */
-  boolean containsKey(K key);
+  CompletableFuture<Boolean> containsKey(K key);
 
   /**
    * Removes the value, if any, associated with the provided key.
@@ -61,7 +62,7 @@ public interface Cache<K, V> {
    *
    * @throws NullPointerException if the provided key is {@code null}
    */
-  void remove(K key);
+  CompletableFuture<Void> remove(K key);
 
   /**
    * Retrieves the value currently mapped to the provided key. If no key is mapped, the cache will be populated.
@@ -72,14 +73,8 @@ public interface Cache<K, V> {
    *
    * @throws NullPointerException if the provided key is {@code null}
    */
-  default V getThrough(K key, Supplier<V> valueSupplier) {
-    if (containsKey(key)) {
-      return get(key);
-    } else {
-      V value = valueSupplier.get();
-      put(key, value);
-      return value;
-    }
+  default CompletableFuture<V> getThrough(K key, Supplier<V> valueSupplier) {
+    return getThroughFuture(key, () -> completedFuture(valueSupplier.get()));
   }
 
   /**
@@ -92,14 +87,9 @@ public interface Cache<K, V> {
    * @throws NullPointerException if the provided key is {@code null}
    */
   default CompletableFuture<V> getThroughFuture(K key, Supplier<CompletableFuture<V>> valueSupplier) {
-    if (containsKey(key)) {
-      return CompletableFuture.completedFuture(get(key));
-    } else {
-      return valueSupplier.get().whenComplete((value, error) -> {
-        if (nonNull(value)) {
-          put(key, value);
-        }
-      });
-    }
+    return get(key).thenCompose(value ->
+      nonNull(value) ? completedFuture(value) : valueSupplier.get()
+        .thenCompose(newValue -> put(key, newValue).thenApply(nothing -> newValue))
+    );
   }
 }

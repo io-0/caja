@@ -1,5 +1,6 @@
 package net.io_0.caja;
 
+import net.io_0.caja.sync.Cache;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -8,7 +9,9 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-import static org.awaitility.Awaitility.await;
+import static java.util.concurrent.CompletableFuture.*;
+import static java.util.concurrent.CompletableFuture.completedFuture;
+import static net.io_0.caja.AsyncUtils.await;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -18,17 +21,17 @@ import static org.junit.jupiter.api.Assertions.*;
  *   I want a temporary key value store for Java objects
  *   so that I can cache data of my linking
  */
-public class LocalCacheTest {
+public class LocalSyncCacheTest {
   /**
    * Scenario: It should be possible to cache data for a certain time
    */
   @Test
   public void cacheAndRetrieveData() {
     // Given a cache, data and keys
-    Cache<String, Integer> one1 = cacheManager1.get(CACHE_A, String.class, Integer.class);
-    Cache<String, Integer> one2 = cacheManager2.get(CACHE_A, String.class, Integer.class);
-    Cache<String, Integer> one3 = cacheManager3.get(CACHE_A, String.class, Integer.class);
-    Cache<Integer, String> two3 = cacheManager3.get(CACHE_B, Integer.class, String.class, new CacheConfig().setTtlInSeconds(2).setHeap(5));
+    Cache<String, Integer> one1 = cacheManager1.getAsSync(CACHE_A, String.class, Integer.class);
+    Cache<String, Integer> one2 = cacheManager2.getAsSync(CACHE_A, String.class, Integer.class);
+    Cache<String, Integer> one3 = cacheManager3.getAsSync(CACHE_A, String.class, Integer.class);
+    Cache<Integer, String> two3 = cacheManager3.getAsSync(CACHE_B, Integer.class, String.class, new CacheConfig().setTtlInSeconds(2).setHeap(5));
 
     // When the data is cached
     one1.put(oneKey1, oneValue1);
@@ -79,13 +82,13 @@ public class LocalCacheTest {
     // And neither should data after ttl (timeToLive)
     assertTrue(one1.containsKey(oneKey2));
     assertTrue(one3.containsKey(oneKey2));
-    await().atMost(1, TimeUnit.SECONDS).until(() -> !one1.containsKey(oneKey2) && !one3.containsKey(oneKey2));
+    org.awaitility.Awaitility.await().atMost(1, TimeUnit.SECONDS).until(() -> !one1.containsKey(oneKey2) && !one3.containsKey(oneKey2));
     assertFalse(one1.containsKey(oneKey2));
     assertFalse(one3.containsKey(oneKey2));
 
     assertTrue(one2.containsKey(oneKey2));
     assertTrue(two3.containsKey(twoKey2));
-    await().atMost(1, TimeUnit.SECONDS).until(() -> !one2.containsKey(oneKey2) && !two3.containsKey(twoKey2));
+    org.awaitility.Awaitility.await().atMost(1, TimeUnit.SECONDS).until(() -> !one2.containsKey(oneKey2) && !two3.containsKey(twoKey2));
     assertFalse(one2.containsKey(oneKey2));
     assertFalse(two3.containsKey(twoKey2));
   }
@@ -96,9 +99,9 @@ public class LocalCacheTest {
   @Test
   public void useCacheConveniently() {
     // Given a cache, data and keys
-    Cache<String, Integer> one1 = cacheManager1.get(CACHE_A, String.class, Integer.class);
-    Cache<String, Integer> one2 = cacheManager2.get(CACHE_A, String.class, Integer.class);
-    Cache<String, Integer> one3 = cacheManager3.get(CACHE_A, String.class, Integer.class);
+    Cache<String, Integer> one1 = cacheManager1.getAsSync(CACHE_A, String.class, Integer.class);
+    Cache<String, Integer> one2 = cacheManager2.getAsSync(CACHE_A, String.class, Integer.class);
+    Cache<String, Integer> one3 = cacheManager3.getAsSync(CACHE_A, String.class, Integer.class);
 
     // When the data is cached
     one1.put(oneKey1, oneValue1);
@@ -131,20 +134,21 @@ public class LocalCacheTest {
     assertEquals(oneValue2, one1.getThrough(oneKey2, Assertions::fail));
     assertEquals(oneValue2, one2.getThrough(oneKey2, Assertions::fail));
     assertEquals(oneValue2, one3.getThrough(oneKey2, Assertions::fail));
-    assertEquals(oneValue1, one1.getThroughFuture(oneKey3, () -> CompletableFuture.completedFuture(oneValue1)).getNow(null));
-    assertEquals(oneValue1, one2.getThroughFuture(oneKey3, () -> CompletableFuture.completedFuture(oneValue1)).getNow(null));
-    assertEquals(oneValue1, one3.getThroughFuture(oneKey3, () -> CompletableFuture.completedFuture(oneValue1)).getNow(null));
-    assertEquals(oneValue2, one1.getThroughFuture(oneKey2, Assertions::fail).getNow(null));
-    assertEquals(oneValue2, one2.getThroughFuture(oneKey2, Assertions::fail).getNow(null));
-    assertEquals(oneValue2, one3.getThroughFuture(oneKey2, Assertions::fail).getNow(null));
+    assertThrows(RuntimeException.class, () -> await(one1.getThroughFuture(oneKey3, () -> failedFuture(new IllegalStateException()))));
+    assertEquals(oneValue1, await(one1.getThroughFuture(oneKey3, () -> completedFuture(oneValue1))));
+    assertEquals(oneValue1, await(one2.getThroughFuture(oneKey3, () -> completedFuture(oneValue1))));
+    assertEquals(oneValue1, await(one3.getThroughFuture(oneKey3, () -> completedFuture(oneValue1))));
+    assertEquals(oneValue2, await(one1.getThroughFuture(oneKey2, Assertions::fail)));
+    assertEquals(oneValue2, await(one2.getThroughFuture(oneKey2, Assertions::fail)));
+    assertEquals(oneValue2, await(one3.getThroughFuture(oneKey2, Assertions::fail)));
 
     // And it shouldn't matter which cache reference I use
-    assertEquals(one1.get(oneKey1), cacheManager1.get(CACHE_A, String.class, Integer.class).get(oneKey1));
-    assertEquals(one1.get(oneKey2), cacheManager1.get(CACHE_A, String.class, Integer.class).get(oneKey2));
-    assertEquals(one2.get(oneKey1), cacheManager2.get(CACHE_A, String.class, Integer.class).get(oneKey1));
-    assertEquals(one2.get(oneKey2), cacheManager2.get(CACHE_A, String.class, Integer.class).get(oneKey2));
-    assertEquals(one3.get(oneKey1), cacheManager3.get(CACHE_A, String.class, Integer.class).get(oneKey1));
-    assertEquals(one3.get(oneKey2), cacheManager3.get(CACHE_A, String.class, Integer.class).get(oneKey2));
+    assertEquals(one1.get(oneKey1), cacheManager1.getAsSync(CACHE_A, String.class, Integer.class).get(oneKey1));
+    assertEquals(one1.get(oneKey2), cacheManager1.getAsSync(CACHE_A, String.class, Integer.class).get(oneKey2));
+    assertEquals(one2.get(oneKey1), cacheManager2.getAsSync(CACHE_A, String.class, Integer.class).get(oneKey1));
+    assertEquals(one2.get(oneKey2), cacheManager2.getAsSync(CACHE_A, String.class, Integer.class).get(oneKey2));
+    assertEquals(one3.get(oneKey1), cacheManager3.getAsSync(CACHE_A, String.class, Integer.class).get(oneKey1));
+    assertEquals(one3.get(oneKey2), cacheManager3.getAsSync(CACHE_A, String.class, Integer.class).get(oneKey2));
   }
 
   private static final String CACHE_A = "cache A";
