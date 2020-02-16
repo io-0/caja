@@ -32,7 +32,7 @@ public class CacheTestAsync {
   @Test
   public void cacheAndRetrieveData() {
     // Given a cache, data and keys
-    List<Cache<String, Integer>> aCaches = setupCaches(String.class, Integer.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
+    List<Cache<String, Integer>> aCaches = setupCaches(CACHE_A, String.class, Integer.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
     List<Cache<Integer, String>> bCaches = List.of(
       cacheManager3.getAsAsync(CACHE_B, Integer.class, String.class, new LocalCacheConfig().setTtlInSeconds(2).setHeap(5)),
       cacheManager5.getAsAsync(CACHE_B, Integer.class, String.class, new LocalCacheConfig().setTtlInSeconds(2))
@@ -72,7 +72,7 @@ public class CacheTestAsync {
   @Test
   public void useCacheConveniently() {
     // Given a cache, data and keys
-    List<Cache<String, Integer>> aCaches = setupCaches(String.class, Integer.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
+    List<Cache<String, Integer>> aCaches = setupCaches(CACHE_A, String.class, Integer.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
 
     // When the data is cached
     fillCaches(aCaches, Map.of(oneKey1, oneValue1, oneKey2, oneValue2));
@@ -93,7 +93,26 @@ public class CacheTestAsync {
     assertGetTroughFutureUsesCache(aCaches, Map.of(oneKey2, oneValue2));
 
     // And it shouldn't matter which cache reference I use
-    assertCacheRefDoesntMatter(aCaches, setupCaches(String.class, Integer.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5), List.of(oneKey1, oneKey1));
+    assertCacheRefDoesntMatter(aCaches, setupCaches(CACHE_A, String.class, Integer.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5), List.of(oneKey1, oneKey1));
+  }
+
+  /**
+   * Scenario: Caches with different names but same keys shouldn't interact
+   */
+  @Test
+  public void cachesShouldNotInteract() {
+    // Given a cache, data and keys
+    List<Cache<String, Integer>> aCaches = setupCaches(CACHE_A, String.class, Integer.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
+    List<Cache<String, Integer>> bCaches = setupCaches(CACHE_B, String.class, Integer.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
+
+    // When the data is cached
+    fillCaches(aCaches, Map.of(oneKey1, oneValue1, oneKey2, oneValue2));
+
+    // Then the data should be retrievable
+    assertKeysPresent(aCaches, List.of(oneKey1, oneKey2));
+    assertKeysAbsent(bCaches, List.of(oneKey1, oneKey2));
+    assertValuesPresent(aCaches, Map.of(oneKey1, oneValue1, oneKey2, oneValue2));
+    assertValuesAbsent(bCaches, List.of(oneKey1, oneKey2));
   }
 
   private static final String CACHE_A = "cache A " + now().getNano();
@@ -136,9 +155,9 @@ public class CacheTestAsync {
     cacheManager5.close();
   }
 
-  private <K, V> List<Cache<K, V>> setupCaches(Class<K> keyType, Class<V> valueType, CacheManager... managers) {
+  private <K, V> List<Cache<K, V>> setupCaches(String name, Class<K> keyType, Class<V> valueType, CacheManager... managers) {
     return Arrays.stream(managers)
-      .map(m -> m.getAsAsync(CACHE_A, keyType, valueType))
+      .map(m -> m.getAsAsync(name, keyType, valueType))
       .collect(Collectors.toList());
   }
 

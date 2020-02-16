@@ -6,6 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.*;
 import java.nio.ByteBuffer;
 
+import static java.util.Objects.nonNull;
+
 @RequiredArgsConstructor
 @Slf4j
 public class JDKObjectCodec<K, V> implements RedisCodec<K, V> {
@@ -13,7 +15,8 @@ public class JDKObjectCodec<K, V> implements RedisCodec<K, V> {
 
   @Override @SuppressWarnings("unchecked")
   public K decodeKey(ByteBuffer bytes) {
-    return (K) ((CacheNameAndKey) decode(bytes)).getKey();
+    CacheNameAndKey cNAK = (CacheNameAndKey) decode(bytes);
+    return (K) (nonNull(cNAK) ? cNAK.key : null);
   }
 
   @Override @SuppressWarnings("unchecked")
@@ -29,6 +32,12 @@ public class JDKObjectCodec<K, V> implements RedisCodec<K, V> {
   @Override
   public ByteBuffer encodeValue(Object value) {
     return encode(value);
+  }
+
+  @RequiredArgsConstructor
+  static class CacheNameAndKey implements Serializable {
+    private final String cacheName;
+    private final Object key;
   }
 
   private Object decode(ByteBuffer bytes) {

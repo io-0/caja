@@ -1,6 +1,8 @@
 package net.io_0.caja;
 
+import io.lettuce.core.AbstractRedisClient;
 import io.lettuce.core.RedisClient;
+import io.lettuce.core.api.StatefulConnection;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.api.sync.RedisCommands;
@@ -147,19 +149,26 @@ public class CacheManager {
   @SuppressWarnings("unchecked")
   private <K, V> StatefulRedisConnection<K, V> getRemoteCacheConnection(String name, RemoteCacheConfig config) {
     String host = config.getHost();
-    ClientAndConnection<K, V> cAC = (ClientAndConnection<K, V>) knownHosts.get(host);
 
-    if (isNull(cAC)) {
-      RedisClient client = RedisClient.create(host);
-      cAC = new ClientAndConnection<>(client, client.connect(new JDKObjectCodec<>(name)));
-      knownHosts.put(host, cAC);
-      log.debug("{}: created with {}", name, config);
+    RedisClient client = clients.get(host);
+    if (isNull(client)) {
+      client = RedisClient.create(host);
+      clients.put(host, client);
+      log.debug("{}: created client with {}", name, config);
     }
 
-    return cAC.connection;
+    StatefulRedisConnection<K, V> connection = (StatefulRedisConnection<K, V>) connections.get(String.format("%s|%s", name, host));
+    if (isNull(connection)) {
+      connection = client.connect(new JDKObjectCodec<>(name));
+      connections.put(String.format("%s|%s", name, host), connection);
+      log.debug("{}: created connection with {}", name, config);
+    }
+
+    return connection;
   }
 
-  private Map<String, ClientAndConnection<?, ?>> knownHosts = new ConcurrentHashMap<>();
+  private Map<String, RedisClient> clients = new ConcurrentHashMap<>();
+  private Map<String, StatefulRedisConnection<?, ?>> connections = new ConcurrentHashMap<>();
 
   @RequiredArgsConstructor
   static class ClientAndConnection<K, V> {
@@ -170,9 +179,7 @@ public class CacheManager {
   public void close() {
     localManager.close();
 
-    knownHosts.values().forEach(cAC -> {
-      cAC.connection.close();
-      cAC.client.shutdown();
-    });
+    connections.values().forEach(StatefulConnection::close);
+    clients.values().forEach(AbstractRedisClient::shutdown);
   }
 }
