@@ -43,7 +43,7 @@ public class JsonObjectCodec<K, V> implements RedisCodec<K, V> {
   @RequiredArgsConstructor
   @Getter @Setter
   static class CacheNameAndKey<K> implements Serializable {
-    private final String cacheName;
+    private final String cache;
     private final K key;
   }
 
