@@ -14,7 +14,7 @@ import net.io_0.caja.configuration.LocalCacheConfig;
 import net.io_0.caja.configuration.RemoteCacheConfig;
 import net.io_0.caja.ehcache.EhcacheAsyncWrapper;
 import net.io_0.caja.ehcache.EhcacheSyncWrapper;
-import net.io_0.caja.redis.JDKObjectCodec;
+import net.io_0.caja.redis.JsonObjectCodec;
 import net.io_0.caja.redis.RedisAsyncWrapper;
 import net.io_0.caja.redis.RedisSyncWrapper;
 import net.io_0.caja.sync.Cache;
@@ -97,7 +97,7 @@ public class CacheManager {
     return new LoggingStatisticsCache<>(name,
       config instanceof LocalCacheConfig
        ? EhcacheSyncWrapper.wrap(getLocalCache(name, keyType, valueType, (LocalCacheConfig) config))
-       : RedisSyncWrapper.wrap(getSyncRemoteCache(name, (RemoteCacheConfig) config), config.getTtlInSeconds())
+       : RedisSyncWrapper.wrap(getSyncRemoteCache(name, (RemoteCacheConfig) config, keyType, valueType), config.getTtlInSeconds())
     );
   }
 
@@ -119,7 +119,7 @@ public class CacheManager {
     return new net.io_0.caja.async.LoggingStatisticsCache<>(name,
       config instanceof LocalCacheConfig
       ? EhcacheAsyncWrapper.wrap(getLocalCache(name, keyType, valueType, (LocalCacheConfig) config))
-      : RedisAsyncWrapper.wrap(getAsyncRemoteCache(name, (RemoteCacheConfig) config), config.getTtlInSeconds())
+      : RedisAsyncWrapper.wrap(getAsyncRemoteCache(name, (RemoteCacheConfig) config, keyType, valueType), config.getTtlInSeconds())
     );
   }
 
@@ -138,16 +138,16 @@ public class CacheManager {
     return localCache;
   }
 
-  private <K, V> RedisCommands<K, V> getSyncRemoteCache(String name, RemoteCacheConfig config) {
-    return this.<K, V> getRemoteCacheConnection(name, config).sync();
+  private <K, V> RedisCommands<K, V> getSyncRemoteCache(String name, RemoteCacheConfig config, Class<K> keyType, Class<V> valueType) {
+    return getRemoteCacheConnection(name, config, keyType, valueType).sync();
   }
 
-  private <K, V> RedisAsyncCommands<K, V> getAsyncRemoteCache(String name, RemoteCacheConfig config) {
-    return this.<K, V> getRemoteCacheConnection(name, config).async();
+  private <K, V> RedisAsyncCommands<K, V> getAsyncRemoteCache(String name, RemoteCacheConfig config, Class<K> keyType, Class<V> valueType) {
+    return getRemoteCacheConnection(name, config, keyType, valueType).async();
   }
 
   @SuppressWarnings("unchecked")
-  private <K, V> StatefulRedisConnection<K, V> getRemoteCacheConnection(String name, RemoteCacheConfig config) {
+  private <K, V> StatefulRedisConnection<K, V> getRemoteCacheConnection(String name, RemoteCacheConfig config, Class<K> keyType, Class<V> valueType) {
     String host = config.getHost();
 
     RedisClient client = clients.get(host);
@@ -159,7 +159,7 @@ public class CacheManager {
 
     StatefulRedisConnection<K, V> connection = (StatefulRedisConnection<K, V>) connections.get(String.format("%s|%s", name, host));
     if (isNull(connection)) {
-      connection = client.connect(new JDKObjectCodec<>(name));
+      connection = client.connect(new JsonObjectCodec<>(name, keyType, valueType));
       connections.put(String.format("%s|%s", name, host), connection);
       log.debug("{}: created connection with {}", name, config);
     }

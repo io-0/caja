@@ -3,8 +3,14 @@ package net.io_0.caja;
 import net.io_0.caja.configuration.CacheManagerConfig;
 import net.io_0.caja.configuration.LocalCacheConfig;
 import net.io_0.caja.configuration.RemoteCacheConfig;
+import net.io_0.caja.models.ComplexKey;
+import net.io_0.caja.models.ComplexValue;
+import net.io_0.caja.models.Nested;
 import net.io_0.caja.sync.Cache;
 import org.junit.jupiter.api.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -115,6 +121,22 @@ public class CacheTestSync {
     assertValuesAbsent(bCaches, List.of(oneKey1, oneKey2));
   }
 
+  /**
+   * Scenario: Caches should be able to handle non primitive data
+   */
+  @Test
+  public void cachesShouldHandleNonPrimitives() {
+    // Given a cache, data and keys
+    List<Cache<ComplexKey, ComplexValue>> aCaches = setupCaches(CACHE_A, ComplexKey.class, ComplexValue.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
+
+    // When the data is cached
+    fillCaches(aCaches, Map.of(complexKey1, complexValue1, complexKey2, complexValue2));
+
+    // Then the data should be retrievable
+    assertKeysPresent(aCaches, List.of(complexKey1, complexKey2));
+    assertValuesPresent(aCaches, Map.of(complexKey1, complexValue1, complexKey2, complexValue2));
+  }
+
   private static final String CACHE_A = "cache A " + now().getNano();
   private static final String CACHE_B = "cache B " + now().getNano();
   private CacheManager cacheManager1;
@@ -134,6 +156,10 @@ public class CacheTestSync {
   private Integer oneValue2 = 2;
   private String twoValue1 = "a";
   private String twoValue2 = "b";
+  private ComplexKey complexKey1 = new ComplexKey("k1", 1, new net.io_0.caja.models.Nested(true, List.of(1, 2, 3)));
+  private ComplexValue complexValue1 = new ComplexValue(1L, BigDecimal.TEN, LocalDateTime.now(), new net.io_0.caja.models.Nested(true, List.of(10, 20, 30)));
+  private ComplexKey complexKey2 = new ComplexKey("k2", 2, new net.io_0.caja.models.Nested(true, List.of(2, 4, 6)));;
+  private ComplexValue complexValue2 = new ComplexValue(2L, BigDecimal.ONE, LocalDateTime.now(), new Nested(true, List.of(20, 40, 60)));
 
   @BeforeEach
   public void init() {
