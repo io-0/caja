@@ -1,6 +1,7 @@
 plugins {
   id "io.freefair.lombok" version "4.1.5"
   id 'java-library'
+  id 'maven-publish'
 }
 
 group = 'net.io_0'
@@ -22,4 +23,12 @@ dependencies {
 
 test {
   useJUnitPlatform()
+}
+
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      from components.java
+    }
+  }
 }

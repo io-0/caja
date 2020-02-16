@@ -1,5 +1,7 @@
 package net.io_0.caja;
 
+import net.io_0.caja.configuration.CacheManagerConfig;
+import net.io_0.caja.configuration.RemoteCacheConfig;
 import net.io_0.caja.sync.Cache;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -30,7 +32,7 @@ public class RemoteSyncCacheTest {
     // Given a cache, data and keys
     Cache<String, Integer> one1 = cacheManager1.getAsSync(CACHE_A, String.class, Integer.class);
     Cache<String, Integer> one2 = cacheManager2.getAsSync(CACHE_A, String.class, Integer.class);
-    Cache<Integer, String> two2 = cacheManager2.getAsSync(CACHE_B, Integer.class, String.class, new CacheConfig().setTtlInSeconds(2));
+    Cache<Integer, String> two2 = cacheManager2.getAsSync(CACHE_B, Integer.class, String.class, new RemoteCacheConfig().setTtlInSeconds(2));
 
     // When the data is cached
     one1.put(oneKey1, oneValue1);
@@ -140,9 +142,9 @@ public class RemoteSyncCacheTest {
 
   @BeforeEach
   public void init() {
-    cacheManager1 = new CacheManager(new CacheConfig().setTtlInSeconds(2).setHost("redis://localhost:6379/0"));
+    cacheManager1 = new CacheManager(new RemoteCacheConfig().setTtlInSeconds(2).setHost("redis://localhost:6379/0"));
     cacheManager2 = new CacheManager(new CacheManagerConfig().setCacheConfigurations(
-      Map.of(CACHE_A, new CacheConfig().setTtlInSeconds(1).setHost("redis://localhost:6379/0"))
+      Map.of(CACHE_A, new RemoteCacheConfig().setTtlInSeconds(1).setHost("redis://localhost:6379/0"))
     ));
     // give remote cache time to reset
     org.awaitility.Awaitility.with().pollDelay(Duration.ofSeconds(2)).await().until(() -> true);

@@ -1,16 +1,18 @@
-package net.io_0.caja;
+package net.io_0.caja.configuration;
 
 import lombok.Getter;
+import lombok.ToString;
+
 import java.util.Collections;
 import java.util.Map;
 
-@Getter
+@Getter @ToString
 public class CacheManagerConfig {
   private CacheConfig defaultCacheConfiguration;
   private Map<String, CacheConfig> cacheConfigurations;
 
   public CacheManagerConfig() {
-    this.defaultCacheConfiguration = new CacheConfig();
+    this.defaultCacheConfiguration = new LocalCacheConfig();
     this.cacheConfigurations = Collections.emptyMap();
   }
 

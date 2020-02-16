@@ -6,6 +6,10 @@ import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.api.sync.RedisCommands;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.io_0.caja.configuration.CacheConfig;
+import net.io_0.caja.configuration.CacheManagerConfig;
+import net.io_0.caja.configuration.LocalCacheConfig;
+import net.io_0.caja.configuration.RemoteCacheConfig;
 import net.io_0.caja.ehcache.EhcacheAsyncWrapper;
 import net.io_0.caja.ehcache.EhcacheSyncWrapper;
 import net.io_0.caja.redis.JDKObjectCodec;
@@ -29,7 +33,7 @@ public class CacheManager {
   private final org.ehcache.CacheManager localManager;
 
   public CacheManager() {
-    this(new CacheConfig());
+    this(new LocalCacheConfig());
   }
 
   public CacheManager(CacheConfig defaultConfig) {
@@ -89,9 +93,9 @@ public class CacheManager {
   public <K, V> Cache<K, V> getAsSync(String name, Class<K> keyType, Class<V> valueType, CacheConfig defaultConfig) {
     CacheConfig config = this.config.getCacheConfigurations().getOrDefault(name, defaultConfig);
     return new LoggingStatisticsCache<>(name,
-      config.getHost().isEmpty()
-       ? EhcacheSyncWrapper.wrap(getLocalCache(name, keyType, valueType, config))
-       : RedisSyncWrapper.wrap(getSyncRemoteCache(name, config), config.getTtlInSeconds())
+      config instanceof LocalCacheConfig
+       ? EhcacheSyncWrapper.wrap(getLocalCache(name, keyType, valueType, (LocalCacheConfig) config))
+       : RedisSyncWrapper.wrap(getSyncRemoteCache(name, (RemoteCacheConfig) config), config.getTtlInSeconds())
     );
   }
 
@@ -111,13 +115,13 @@ public class CacheManager {
   public <K, V> net.io_0.caja.async.Cache<K, V> getAsAsync(String name, Class<K> keyType, Class<V> valueType, CacheConfig defaultConfig) {
     CacheConfig config = this.config.getCacheConfigurations().getOrDefault(name, defaultConfig);
     return new net.io_0.caja.async.LoggingStatisticsCache<>(name,
-      config.getHost().isEmpty()
-      ? EhcacheAsyncWrapper.wrap(getLocalCache(name, keyType, valueType, config))
-      : RedisAsyncWrapper.wrap(getAsyncRemoteCache(name, config), config.getTtlInSeconds())
+      config instanceof LocalCacheConfig
+      ? EhcacheAsyncWrapper.wrap(getLocalCache(name, keyType, valueType, (LocalCacheConfig) config))
+      : RedisAsyncWrapper.wrap(getAsyncRemoteCache(name, (RemoteCacheConfig) config), config.getTtlInSeconds())
     );
   }
 
-  private <K, V> org.ehcache.Cache<K, V> getLocalCache(String name, Class<K> keyType, Class<V> valueType, CacheConfig config) {
+  private <K, V> org.ehcache.Cache<K, V> getLocalCache(String name, Class<K> keyType, Class<V> valueType, LocalCacheConfig config) {
     org.ehcache.Cache<K, V> localCache = localManager.getCache(name, keyType, valueType);
 
     if (isNull(localCache)) {
@@ -132,17 +136,17 @@ public class CacheManager {
     return localCache;
   }
 
-  private <K, V> RedisCommands<K, V> getSyncRemoteCache(String name, CacheConfig config) {
+  private <K, V> RedisCommands<K, V> getSyncRemoteCache(String name, RemoteCacheConfig config) {
     return this.<K, V> getRemoteCacheConnection(name, config).sync();
   }
 
-  private <K, V> RedisAsyncCommands<K, V> getAsyncRemoteCache(String name, CacheConfig config) {
+  private <K, V> RedisAsyncCommands<K, V> getAsyncRemoteCache(String name, RemoteCacheConfig config) {
     return this.<K, V> getRemoteCacheConnection(name, config).async();
   }
 
   @SuppressWarnings("unchecked")
-  private <K, V> StatefulRedisConnection<K, V> getRemoteCacheConnection(String name, CacheConfig config) {
-    String host = config.getHost().orElseThrow();
+  private <K, V> StatefulRedisConnection<K, V> getRemoteCacheConnection(String name, RemoteCacheConfig config) {
+    String host = config.getHost();
     ClientAndConnection<K, V> cAC = (ClientAndConnection<K, V>) knownHosts.get(host);
 
     if (isNull(cAC)) {

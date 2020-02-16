@@ -1,6 +1,8 @@
 package net.io_0.caja;
 
 import net.io_0.caja.async.Cache;
+import net.io_0.caja.configuration.CacheManagerConfig;
+import net.io_0.caja.configuration.LocalCacheConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,7 +33,7 @@ public class LocalAsyncCacheTest {
     Cache<String, Integer> one1 = cacheManager1.getAsAsync(CACHE_A, String.class, Integer.class);
     Cache<String, Integer> one2 = cacheManager2.getAsAsync(CACHE_A, String.class, Integer.class);
     Cache<String, Integer> one3 = cacheManager3.getAsAsync(CACHE_A, String.class, Integer.class);
-    Cache<Integer, String> two3 = cacheManager3.getAsAsync(CACHE_B, Integer.class, String.class, new CacheConfig().setTtlInSeconds(2).setHeap(5));
+    Cache<Integer, String> two3 = cacheManager3.getAsAsync(CACHE_B, Integer.class, String.class, new LocalCacheConfig().setTtlInSeconds(2).setHeap(5));
 
     // When the data is cached
     one1.put(oneKey1, oneValue1);
@@ -172,8 +174,8 @@ public class LocalAsyncCacheTest {
   @BeforeEach
   public void init() {
     cacheManager1 = new CacheManager();
-    cacheManager2 = new CacheManager(new CacheConfig().setHeap(10).setTtlInSeconds(2));
-    cacheManager3 = new CacheManager(new CacheManagerConfig().setCacheConfigurations(Map.of(CACHE_A, new CacheConfig().setTtlInSeconds(1).setHeap(5))));
+    cacheManager2 = new CacheManager(new LocalCacheConfig().setHeap(10).setTtlInSeconds(2));
+    cacheManager3 = new CacheManager(new CacheManagerConfig().setCacheConfigurations(Map.of(CACHE_A, new LocalCacheConfig().setTtlInSeconds(1).setHeap(5))));
   }
 
   @AfterEach
