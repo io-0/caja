@@ -14,26 +14,26 @@ public class LoggingStatisticsCache<K, V> implements Cache<K, V> {
   @Override
   public V get(K key) {
     V value = cache.get(key);
-    log.trace("{}: {} value for '{}'", name, nonNull(value) ? "got" : "missed", key);
+    log.debug("{}: {} value for '{}'", name, nonNull(value) ? "got" : "missed", key);
     return value;
   }
 
   @Override
   public void put(K key, V value) {
-    log.trace("{}: put value for '{}'", name, key);
+    log.debug("{}: put value for '{}'", name, key);
     cache.put(key, value);
   }
 
   @Override
   public boolean containsKey(K key) {
     boolean isKeyPresent = cache.containsKey(key);
-    log.trace("{}: {} key '{}'", name, isKeyPresent ? "contained" : "missed", key);
+    log.debug("{}: {} key '{}'", name, isKeyPresent ? "contained" : "missed", key);
     return isKeyPresent;
   }
 
   @Override
   public void remove(K key) {
-    log.trace("{}: removed value for '{}'", name, key);
+    log.debug("{}: removed value for '{}'", name, key);
     cache.remove(key);
   }
 }

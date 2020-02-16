@@ -17,13 +17,13 @@ public class LoggingStatisticsCache<K, V> implements Cache<K, V> {
   public CompletableFuture<V> get(K key) {
     return cache.get(key)
       .whenComplete((value, error) -> {
-        if (isNull(error)) log.trace("{}: {} value for '{}'", name, nonNull(value) ? "got" : "missed", key);
+        if (isNull(error)) log.debug("{}: {} value for '{}'", name, nonNull(value) ? "got" : "missed", key);
       });
   }
 
   @Override
   public CompletableFuture<Void> put(K key, V value) {
-    log.trace("{}: put value for '{}'", name, key);
+    log.debug("{}: put value for '{}'", name, key);
     return cache.put(key, value);
   }
 
@@ -31,13 +31,13 @@ public class LoggingStatisticsCache<K, V> implements Cache<K, V> {
   public CompletableFuture<Boolean> containsKey(K key) {
     return cache.containsKey(key)
       .whenComplete((value, error) -> {
-        if (isNull(error) && nonNull(value)) log.trace("{}: {} key '{}'", name, value ? "contained" : "missed", key);
+        if (isNull(error) && nonNull(value)) log.debug("{}: {} key '{}'", name, value ? "contained" : "missed", key);
       });
   }
 
   @Override
   public CompletableFuture<Void> remove(K key) {
-    log.trace("{}: removed value for '{}'", name, key);
+    log.debug("{}: removed value for '{}'", name, key);
     return cache.remove(key);
   }
 }

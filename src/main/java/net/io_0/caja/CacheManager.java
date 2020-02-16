@@ -130,7 +130,7 @@ public class CacheManager {
           .withExpiry(ExpiryPolicyBuilder.timeToLiveExpiration(Duration.ofSeconds(config.getTtlInSeconds())))
           .build()
       );
-      log.trace("{}: created with {}", name, config);
+      log.debug("{}: created with {}", name, config);
     }
 
     return localCache;
@@ -153,7 +153,7 @@ public class CacheManager {
       RedisClient client = RedisClient.create(host);
       cAC = new ClientAndConnection<>(client, client.connect(new JDKObjectCodec<>(name)));
       knownHosts.put(host, cAC);
-      log.trace("{}: created with {}", name, config);
+      log.debug("{}: created with {}", name, config);
     }
 
     return cAC.connection;
