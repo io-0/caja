@@ -7,10 +7,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.io_0.maja.mapping.Mapper;
+import org.apache.commons.lang3.StringUtils;
 import java.io.*;
 import java.nio.ByteBuffer;
-
-import static java.util.Objects.nonNull;
 
 @RequiredArgsConstructor
 @Slf4j
@@ -19,10 +18,14 @@ public class JsonObjectCodec<K, V> implements RedisCodec<K, V> {
   private final Class<K> keyType;
   private final Class<V> valueType;
 
+  private final static String SEPARATOR = "/";
+
   @Override @SuppressWarnings("unchecked")
   public K decodeKey(ByteBuffer bytes) {
-    CacheNameAndKey<K> cNAK = (CacheNameAndKey<K>) decode(bytes, CacheNameAndKey.class);
-    return (nonNull(cNAK) ? cNAK.key : null);
+    if (keyType.equals(String.class)) {
+      return (K) StringUtils.removeStart(cacheName + SEPARATOR, StringCodec.UTF8.decodeValue(bytes));
+    }
+    return ((NameSpaceAndKey<K>) decode(bytes, NameSpaceAndKey.class)).key;
   }
 
   @Override @SuppressWarnings("unchecked")
@@ -32,7 +35,10 @@ public class JsonObjectCodec<K, V> implements RedisCodec<K, V> {
 
   @Override @SuppressWarnings("unchecked")
   public ByteBuffer encodeKey(Object key) {
-    return encode(new CacheNameAndKey<>(cacheName, (K) key));
+    if (keyType.equals(String.class)) {
+      return StringCodec.UTF8.encodeValue(cacheName + SEPARATOR + key);
+    }
+    return encode(new NameSpaceAndKey<>(cacheName, (K) key));
   }
 
   @Override
@@ -42,8 +48,8 @@ public class JsonObjectCodec<K, V> implements RedisCodec<K, V> {
 
   @RequiredArgsConstructor
   @Getter @Setter
-  static class CacheNameAndKey<K> implements Serializable {
-    private final String cache;
+  private static class NameSpaceAndKey<K> implements Serializable {
+    private final String ns;
     private final K key;
   }
 
