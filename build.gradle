@@ -1,0 +1,37 @@
+plugins {
+  id "io.freefair.lombok" version "4.1.5"
+  id 'java-library'
+  id 'maven-publish'
+}
+
+group = 'net.io_0'
+version = '1.0.0'
+sourceCompatibility = 11
+
+repositories {
+  mavenCentral()
+  maven { url "https://jitpack.io" }
+}
+
+dependencies {
+  implementation 'ch.qos.logback:logback-classic:1.2.3'
+  implementation 'org.ehcache:ehcache:3.8.1'
+  implementation 'io.lettuce:lettuce-core:5.2.0.RELEASE'
+  implementation 'org.apache.commons:commons-lang3:3.9'
+  implementation 'com.github.io-0:maja:1.2.0'
+  testImplementation 'org.junit.jupiter:junit-jupiter-api:5.5.2'
+  testImplementation 'org.awaitility:awaitility:4.0.1'
+  testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.5.2'
+}
+
+test {
+  useJUnitPlatform()
+}
+
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      from components.java
+    }
+  }
+}
