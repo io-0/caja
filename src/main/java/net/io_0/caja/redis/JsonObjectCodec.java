@@ -1,15 +1,19 @@
 package net.io_0.caja.redis;
 
 import io.lettuce.core.codec.RedisCodec;
-import io.lettuce.core.codec.StringCodec;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.io_0.maja.mapping.Mapper;
-import org.apache.commons.lang3.StringUtils;
 import java.io.*;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.UUID;
+import java.util.function.Predicate;
+
+import static io.lettuce.core.codec.StringCodec.UTF8;
+import static org.apache.commons.lang3.StringUtils.removeStart;
 
 @RequiredArgsConstructor
 @Slf4j
@@ -19,11 +23,12 @@ public class JsonObjectCodec<K, V> implements RedisCodec<K, V> {
   private final Class<V> valueType;
 
   private final static String SEPARATOR = "/";
+  private final static Predicate<Class<?>> isSimpleKeyType = isAnyOf(String.class, UUID.class, Integer.class, Long.class);
 
   @Override @SuppressWarnings("unchecked")
   public K decodeKey(ByteBuffer bytes) {
-    if (keyType.equals(String.class)) {
-      return (K) StringUtils.removeStart(cacheName + SEPARATOR, StringCodec.UTF8.decodeValue(bytes));
+    if (isSimpleKeyType.test(keyType)) {
+      return (K) decodeSimpleKey(removeStart(UTF8.decodeValue(bytes), cacheName + SEPARATOR), keyType);
     }
     return ((NameSpaceAndKey<K>) decode(bytes, NameSpaceAndKey.class)).key;
   }
@@ -35,8 +40,8 @@ public class JsonObjectCodec<K, V> implements RedisCodec<K, V> {
 
   @Override @SuppressWarnings("unchecked")
   public ByteBuffer encodeKey(Object key) {
-    if (keyType.equals(String.class)) {
-      return StringCodec.UTF8.encodeValue(cacheName + SEPARATOR + key);
+    if (isSimpleKeyType.test(keyType)) {
+      return UTF8.encodeValue(cacheName + SEPARATOR + key);
     }
     return encode(new NameSpaceAndKey<>(cacheName, (K) key));
   }
@@ -53,11 +58,26 @@ public class JsonObjectCodec<K, V> implements RedisCodec<K, V> {
     private final K key;
   }
 
-  private Object decode(ByteBuffer bytes, Class<?> type) {
-    return Mapper.fromJson(StringCodec.UTF8.decodeValue(bytes), type);
+  private static Object decode(ByteBuffer bytes, Class<?> type) {
+    return Mapper.fromJson(UTF8.decodeValue(bytes), type);
   }
 
-  private ByteBuffer encode(Object value) {
-    return StringCodec.UTF8.encodeValue(Mapper.toJson(value));
+  private static ByteBuffer encode(Object value) {
+    return UTF8.encodeValue(Mapper.toJson(value));
+  }
+
+  private static Object decodeSimpleKey(String key, Class<?> type) {
+    if (type.equals(UUID.class)) {
+      return UUID.fromString(key);
+    } else if (type.equals(Integer.class)) {
+      return Integer.valueOf(key);
+    } else if (type.equals(Long.class)) {
+      return Long.valueOf(key);
+    }
+    return key;
+  }
+
+  private static Predicate<Class<?>> isAnyOf(Class<?>... types) {
+    return type -> Arrays.asList(types).contains(type);
   }
 }
