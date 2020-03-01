@@ -213,7 +213,7 @@ public class CacheTestAsync {
 
   private void assertKeysAbsentAfterTtl(Map<Cache, ?> cachesAndKeys, int ttlInSeconds) {
     cachesAndKeys.forEach((cache, key) -> assertKeysPresent(List.of(cache), List.of(key)));
-    org.awaitility.Awaitility.await().atMost(ttlInSeconds, TimeUnit.SECONDS).until(() -> allKeysAbsent(cachesAndKeys));
+    org.awaitility.Awaitility.await().atMost(ttlInSeconds*1000 + 200, TimeUnit.MILLISECONDS).until(() -> allKeysAbsent(cachesAndKeys));
     cachesAndKeys.forEach((cache, key) -> assertKeysAbsent(List.of(cache), List.of(key)));
   }
 
