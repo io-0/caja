@@ -13,9 +13,9 @@ import static net.io_0.caja.AsyncUtils.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
-public class ReadmeExampleTest {
+class ReadmeExampleTest {
   @Test
-  public void exampleTest() {
+  void exampleTest() {
     // Given
     // All caches retrieved from this will be local caches with heap 100 and ttl 1 second.
     CacheManager cacheManager1 = new CacheManager();

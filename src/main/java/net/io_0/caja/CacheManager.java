@@ -15,6 +15,7 @@ import net.io_0.caja.configuration.RemoteCacheConfig;
 import net.io_0.caja.ehcache.EhcacheAsyncWrapper;
 import net.io_0.caja.ehcache.EhcacheSyncWrapper;
 import net.io_0.caja.redis.JsonObjectCodec;
+import net.io_0.caja.redis.KeyOrWildcard;
 import net.io_0.caja.redis.RedisAsyncWrapper;
 import net.io_0.caja.redis.RedisSyncWrapper;
 import net.io_0.caja.sync.Cache;
@@ -93,11 +94,11 @@ public class CacheManager {
    * @throws IllegalArgumentException if a cache under that name exist wit different types
    */
   public <K, V> Cache<K, V> getAsSync(String name, Class<K> keyType, Class<V> valueType, CacheConfig defaultConfig) {
-    CacheConfig config = this.config.getCacheConfigurations().getOrDefault(name, defaultConfig);
+    CacheConfig cfg = this.config.getCacheConfigurations().getOrDefault(name, defaultConfig);
     return new LoggingStatisticsCache<>(name,
-      config instanceof LocalCacheConfig
-       ? EhcacheSyncWrapper.wrap(getLocalCache(name, keyType, valueType, (LocalCacheConfig) config))
-       : RedisSyncWrapper.wrap(getSyncRemoteCache(name, (RemoteCacheConfig) config, keyType, valueType), config.getTtlInSeconds())
+      cfg instanceof LocalCacheConfig
+        ? EhcacheSyncWrapper.wrap(getLocalCache(name, keyType, valueType, (LocalCacheConfig) cfg))
+        : RedisSyncWrapper.wrap(getSyncRemoteCache(name, (RemoteCacheConfig) cfg, keyType, valueType), cfg.getTtlInSeconds())
     );
   }
 
@@ -115,11 +116,11 @@ public class CacheManager {
    * @throws IllegalArgumentException if a cache under that name exist wit different types
    */
   public <K, V> net.io_0.caja.async.Cache<K, V> getAsAsync(String name, Class<K> keyType, Class<V> valueType, CacheConfig defaultConfig) {
-    CacheConfig config = this.config.getCacheConfigurations().getOrDefault(name, defaultConfig);
+    CacheConfig cfg = this.config.getCacheConfigurations().getOrDefault(name, defaultConfig);
     return new net.io_0.caja.async.LoggingStatisticsCache<>(name,
-      config instanceof LocalCacheConfig
-      ? EhcacheAsyncWrapper.wrap(getLocalCache(name, keyType, valueType, (LocalCacheConfig) config))
-      : RedisAsyncWrapper.wrap(getAsyncRemoteCache(name, (RemoteCacheConfig) config, keyType, valueType), config.getTtlInSeconds())
+      cfg instanceof LocalCacheConfig
+        ? EhcacheAsyncWrapper.wrap(getLocalCache(name, keyType, valueType, (LocalCacheConfig) cfg))
+        : RedisAsyncWrapper.wrap(getAsyncRemoteCache(name, (RemoteCacheConfig) cfg, keyType, valueType), cfg.getTtlInSeconds())
     );
   }
 
@@ -138,16 +139,16 @@ public class CacheManager {
     return localCache;
   }
 
-  private <K, V> RedisCommands<K, V> getSyncRemoteCache(String name, RemoteCacheConfig config, Class<K> keyType, Class<V> valueType) {
+  private <K, V> RedisCommands<KeyOrWildcard<K>, V> getSyncRemoteCache(String name, RemoteCacheConfig config, Class<K> keyType, Class<V> valueType) {
     return getRemoteCacheConnection(name, config, keyType, valueType).sync();
   }
 
-  private <K, V> RedisAsyncCommands<K, V> getAsyncRemoteCache(String name, RemoteCacheConfig config, Class<K> keyType, Class<V> valueType) {
+  private <K, V> RedisAsyncCommands<KeyOrWildcard<K>, V> getAsyncRemoteCache(String name, RemoteCacheConfig config, Class<K> keyType, Class<V> valueType) {
     return getRemoteCacheConnection(name, config, keyType, valueType).async();
   }
 
   @SuppressWarnings("unchecked")
-  private <K, V> StatefulRedisConnection<K, V> getRemoteCacheConnection(String name, RemoteCacheConfig config, Class<K> keyType, Class<V> valueType) {
+  private <K, V> StatefulRedisConnection<KeyOrWildcard<K>, V> getRemoteCacheConnection(String name, RemoteCacheConfig config, Class<K> keyType, Class<V> valueType) {
     String host = config.getHost();
 
     RedisClient client = clients.get(host);
@@ -157,7 +158,7 @@ public class CacheManager {
       log.debug("{}: created client with {}", name, config);
     }
 
-    StatefulRedisConnection<K, V> connection = (StatefulRedisConnection<K, V>) connections.get(String.format("%s|%s", name, host));
+    StatefulRedisConnection<KeyOrWildcard<K>, V> connection = (StatefulRedisConnection<KeyOrWildcard<K>, V>) connections.get(String.format("%s|%s", name, host));
     if (isNull(connection)) {
       connection = client.connect(new JsonObjectCodec<>(name, keyType, valueType));
       connections.put(String.format("%s|%s", name, host), connection);

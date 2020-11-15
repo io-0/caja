@@ -2,6 +2,7 @@ package net.io_0.caja.sync;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import java.util.List;
 
 import static java.util.Objects.nonNull;
 
@@ -32,8 +33,21 @@ public class LoggingStatisticsCache<K, V> implements Cache<K, V> {
   }
 
   @Override
+  public List<K> keys() {
+    List<K> keys = cache.keys();
+    log.debug("{}: fetched {} active keys", name, keys.size());
+    return keys;
+  }
+
+  @Override
   public void remove(K key) {
     log.debug("{}: removed value for '{}'", name, key);
     cache.remove(key);
+  }
+
+  @Override
+  public void clear() {
+    log.debug("{}: cleared", name);
+    cache.clear();
   }
 }

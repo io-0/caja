@@ -2,11 +2,12 @@ package net.io_0.caja.models;
 
 import lombok.*;
 
-@RequiredArgsConstructor
+@AllArgsConstructor
+@NoArgsConstructor
 @EqualsAndHashCode @ToString
 @Getter @Setter
 public class ComplexKey {
-  private final String field1;
-  private final Integer field2;
-  private final Nested field3;
+  private String field1;
+  private Integer field2;
+  private Nested field3;
 }

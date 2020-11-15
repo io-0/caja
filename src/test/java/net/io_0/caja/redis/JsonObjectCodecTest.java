@@ -19,12 +19,12 @@ class JsonObjectCodecTest {
   }
 
   <K> void encodeDecodeTest(K key, Class<K> type) {
-    JsonObjectCodec<K, Object> codec = new JsonObjectCodec<>(CACHE_NAME, type, Object.class);
+    JsonObjectCodec<K, KeyOrWildcard<K>, Object> codec = new JsonObjectCodec<>(CACHE_NAME, type, Object.class);
 
-    ByteBuffer encoded = codec.encodeKey(key);
+    ByteBuffer encoded = codec.encodeKey(KeyOrWildcard.key(key));
     String probe = StandardCharsets.UTF_8.decode(encoded).toString();
     assertTrue(probe.startsWith(CACHE_NAME), () -> String.format("'%s' doesn't start with '%s'", probe, CACHE_NAME));
     encoded.rewind();
-    assertEquals(key, codec.decodeKey(encoded));
+    assertEquals(key, codec.decodeKey(encoded).getKey());
   }
 }

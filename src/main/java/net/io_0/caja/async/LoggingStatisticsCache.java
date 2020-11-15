@@ -2,6 +2,7 @@ package net.io_0.caja.async;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import static java.util.Objects.isNull;
@@ -23,8 +24,10 @@ public class LoggingStatisticsCache<K, V> implements Cache<K, V> {
 
   @Override
   public CompletableFuture<Void> put(K key, V value) {
-    log.debug("{}: put value for '{}'", name, key);
-    return cache.put(key, value);
+    return cache.put(key, value)
+      .whenComplete((ignored, error) -> {
+        if (isNull(error)) log.debug("{}: put value for '{}'", name, key);
+      });
   }
 
   @Override
@@ -36,8 +39,26 @@ public class LoggingStatisticsCache<K, V> implements Cache<K, V> {
   }
 
   @Override
+  public CompletableFuture<List<K>> keys() {
+    return cache.keys()
+      .whenComplete((keys, error) -> {
+        if (isNull(error)) log.debug("{}: fetched {} active keys", name, keys.size());
+      });
+  }
+
+  @Override
   public CompletableFuture<Void> remove(K key) {
-    log.debug("{}: removed value for '{}'", name, key);
-    return cache.remove(key);
+    return cache.remove(key)
+      .whenComplete((ignored, error) -> {
+        if (isNull(error)) log.debug("{}: removed value for '{}'", name, key);
+      });
+  }
+
+  @Override
+  public CompletableFuture<Void> clear() {
+    return cache.clear()
+      .whenComplete((ignored, error) -> {
+        if (isNull(error)) log.debug("{}: cleared", name);
+      });
   }
 }
