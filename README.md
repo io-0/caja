@@ -23,16 +23,16 @@ dependencies {
 ### Grab a cache manager
 A Cache Manager is the first step to acquire a cache. It holds all configurations beside types.
 ```Java
-// All caches retrieved from this will be local caches with heap 100 and ttl 1 second.
+// All caches retrieved from this will be local caches with heap 100 items and ttl 1 second.
 CacheManager cacheManager = new CacheManager();
 ```
 ```Java
-// All caches retrieved from this will be local caches with heap 10 and ttl 2 second.
+// All caches retrieved from this will be local caches with heap 10 items and ttl 2 second.
 CacheManager cacheManager = new CacheManager(new LocalCacheConfig().setHeap(10).setTtlInSeconds(2));
 ```
 ```Java
-// All caches retrieved from this will be local caches with heap 100 and ttl 1 second, with one exception:
-// If the cache is called 'my cache', it's heap will be 5 and it's ttl 2 seconds.
+// All caches retrieved from this will be local caches with heap 100 items and ttl 1 second, with one exception:
+// If the cache is called 'my cache', it's heap will be 5 items and it's ttl 2 seconds.
 CacheManager cacheManager = new CacheManager(new CacheManagerConfig()
   .setCacheConfigurations(Map.of("my cache", new LocalCacheConfig().setHeap(5).setTtlInSeconds(2)))
 );

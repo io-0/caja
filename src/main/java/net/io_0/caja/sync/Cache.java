@@ -1,5 +1,6 @@
 package net.io_0.caja.sync;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
@@ -57,6 +58,13 @@ public interface Cache<K, V> {
   boolean containsKey(K key);
 
   /**
+   * Retrieves all currently active keys
+   *
+   * @return found keys
+   */
+  List<K> keys();
+
+  /**
    * Removes the value, if any, associated with the provided key.
    *
    * @param key the key to remove the value for, may not be {@code null}
@@ -64,6 +72,11 @@ public interface Cache<K, V> {
    * @throws NullPointerException if the provided key is {@code null}
    */
   void remove(K key);
+
+  /**
+   * Removes all mappings currently present in the Cache.
+   */
+  void clear();
 
   /**
    * Retrieves the value currently mapped to the provided key. If no key is mapped, the cache will be populated.

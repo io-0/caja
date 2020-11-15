@@ -1,12 +1,9 @@
 package net.io_0.caja.redis;
 
 import io.lettuce.core.codec.RedisCodec;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import net.io_0.maja.mapping.Mapper;
-import java.io.*;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.UUID;
@@ -17,20 +14,20 @@ import static org.apache.commons.lang3.StringUtils.removeStart;
 
 @RequiredArgsConstructor
 @Slf4j
-public class JsonObjectCodec<K, V> implements RedisCodec<K, V> {
+public class JsonObjectCodec<K, C extends KeyOrWildcard<K>, V> implements RedisCodec<C, V> {
   private final String cacheName;
   private final Class<K> keyType;
   private final Class<V> valueType;
 
-  private final static String SEPARATOR = "/";
-  private final static Predicate<Class<?>> isSimpleKeyType = isAnyOf(String.class, UUID.class, Integer.class, Long.class);
+  private static final String SEPARATOR = "/";
+  private static final Predicate<Class<?>> isSimpleKeyType = isAnyOf(String.class, UUID.class, Integer.class, Long.class);
 
   @Override @SuppressWarnings("unchecked")
-  public K decodeKey(ByteBuffer bytes) {
+  public C decodeKey(ByteBuffer bytes) {
     if (isSimpleKeyType.test(keyType)) {
-      return (K) decodeSimpleKey(removeStart(UTF8.decodeValue(bytes), cacheName + SEPARATOR), keyType);
+      return (C) KeyOrWildcard.key((K) decodeSimpleKey(removeStart(UTF8.decodeValue(bytes), cacheName + SEPARATOR), keyType));
     }
-    return ((NameSpaceAndKey<K>) decode(bytes, NameSpaceAndKey.class)).key;
+    return (C) KeyOrWildcard.key(Mapper.fromJson(UTF8.decodeValue(bytes), NameSpaceAndKey.class, keyType).key);
   }
 
   @Override @SuppressWarnings("unchecked")
@@ -38,24 +35,32 @@ public class JsonObjectCodec<K, V> implements RedisCodec<K, V> {
     return (V) decode(bytes, valueType);
   }
 
-  @Override @SuppressWarnings("unchecked")
-  public ByteBuffer encodeKey(Object key) {
-    if (isSimpleKeyType.test(keyType)) {
-      return UTF8.encodeValue(cacheName + SEPARATOR + key);
+  @Override
+  public ByteBuffer encodeKey(KeyOrWildcard keyOrWildcard) {
+    if (keyOrWildcard.isWildcard()) {
+      if (isSimpleKeyType.test(keyType)) {
+        return UTF8.encodeValue(cacheName + SEPARATOR + "*");
+      }
+      return UTF8.encodeValue("{\"ns\":\""+cacheName+"\",*");
     }
-    return encode(new NameSpaceAndKey<>(cacheName, (K) key));
+
+    if (isSimpleKeyType.test(keyType)) {
+      return UTF8.encodeValue(cacheName + SEPARATOR + keyOrWildcard.getKey());
+    }
+    return encode(new NameSpaceAndKey<>(cacheName, keyOrWildcard.getKey()));
   }
 
   @Override
-  public ByteBuffer encodeValue(Object value) {
+  public ByteBuffer encodeValue(V value) {
     return encode(value);
   }
 
-  @RequiredArgsConstructor
+  @AllArgsConstructor
+  @NoArgsConstructor
   @Getter @Setter
-  private static class NameSpaceAndKey<K> implements Serializable {
-    private final String ns;
-    private final K key;
+  private static class NameSpaceAndKey<K> {
+    private String ns;
+    private K key;
   }
 
   private static Object decode(ByteBuffer bytes, Class<?> type) {

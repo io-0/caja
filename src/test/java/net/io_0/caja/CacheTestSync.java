@@ -8,7 +8,6 @@ import net.io_0.caja.models.ComplexValue;
 import net.io_0.caja.models.Nested;
 import net.io_0.caja.sync.Cache;
 import org.junit.jupiter.api.*;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -18,9 +17,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static java.lang.String.*;
 import static java.time.Instant.now;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.concurrent.CompletableFuture.failedFuture;
+import static net.io_0.caja.Asserts.assertCollectionEquals;
 import static net.io_0.caja.AsyncUtils.await;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -31,12 +32,12 @@ import static org.junit.jupiter.api.Assertions.*;
  *   I want a temporary key value store for Java objects
  *   so that I can cache data of my linking
  */
-public class CacheTestSync {
+class CacheTestSync {
   /**
    * Scenario: It should be possible to cache data for a certain time
    */
   @Test
-  public void cacheAndRetrieveData() {
+  void cacheAndRetrieveData() {
     // Given a cache, data and keys
     List<Cache<String, Integer>> aCaches = setupCaches(CACHE_A, String.class, Integer.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
     List<Cache<Integer, String>> bCaches = List.of(
@@ -76,7 +77,7 @@ public class CacheTestSync {
    * Scenario: It should be convenient to work with caches
    */
   @Test
-  public void useCacheConveniently() {
+  void useCacheConveniently() {
     // Given a cache, data and keys
     List<Cache<String, Integer>> aCaches = setupCaches(CACHE_A, String.class, Integer.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
 
@@ -106,7 +107,7 @@ public class CacheTestSync {
    * Scenario: Caches with different names but same keys shouldn't interact
    */
   @Test
-  public void cachesShouldNotInteract() {
+  void cachesShouldNotInteract() {
     // Given a cache, data and keys
     List<Cache<String, Integer>> aCaches = setupCaches(CACHE_A, String.class, Integer.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
     List<Cache<String, Integer>> bCaches = setupCaches(CACHE_B, String.class, Integer.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
@@ -122,10 +123,90 @@ public class CacheTestSync {
   }
 
   /**
+   * Scenario: It should be possible to fetch all cache keys at a given time
+   */
+  @Test
+  void cachedKeysShouldBeRetrievable() {
+    // Given a cache, data and keys
+    List<Cache<String, Integer>> aCaches = setupCaches(CACHE_A, String.class, Integer.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
+    List<Cache<String, Integer>> bCaches = setupCaches(CACHE_B, String.class, Integer.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
+    List<Cache<ComplexKey, ComplexValue>> cCaches = setupCaches(CACHE_C, ComplexKey.class, ComplexValue.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
+
+    fillCaches(aCaches, Map.of(oneKey1, oneValue1, oneKey2, oneValue2));
+    fillCaches(bCaches, Map.of(oneKey3, oneValue3, oneKey4, oneValue4));
+    fillCaches(cCaches, Map.of(complexKey1, complexValue1, complexKey2, complexValue2));
+
+    assertKeysPresent(aCaches, List.of(oneKey1, oneKey2));
+    assertKeysPresent(bCaches, List.of(oneKey3, oneKey4));
+    assertKeysPresent(cCaches, List.of(complexKey1, complexKey2));
+
+    // When the keys are fetched
+    var firstAKeys = aCaches.stream().map(Cache::keys).collect(Collectors.toList());
+    var firstBKeys = bCaches.stream().map(Cache::keys).collect(Collectors.toList());
+    var firstCKeys = cCaches.stream().map(Cache::keys).collect(Collectors.toList());
+    var secondAKeys = aCaches.stream().map(Cache::keys).collect(Collectors.toList());
+    var secondBKeys = bCaches.stream().map(Cache::keys).collect(Collectors.toList());
+    var secondCKeys = cCaches.stream().map(Cache::keys).collect(Collectors.toList());
+    org.awaitility.Awaitility.await().pollInterval(2*1000 + 200, TimeUnit.MILLISECONDS).until(() -> true);
+    var thirdAKeys = aCaches.stream().map(Cache::keys).collect(Collectors.toList());
+    var thirdBKeys = bCaches.stream().map(Cache::keys).collect(Collectors.toList());
+    var thirdCKeys = cCaches.stream().map(Cache::keys).collect(Collectors.toList());
+
+    // Then the right amount of keys should be present at the right time
+    firstAKeys.forEach(ks -> assertCollectionEquals(List.of(oneKey1, oneKey2), ks));
+    firstBKeys.forEach(ks -> assertCollectionEquals(List.of(oneKey3, oneKey4), ks));
+    firstCKeys.forEach(ks -> assertCollectionEquals(List.of(complexKey1, complexKey2), ks));
+
+    assertCollectionEquals(firstAKeys, secondAKeys);
+    assertCollectionEquals(firstBKeys, secondBKeys);
+    assertCollectionEquals(firstCKeys, secondCKeys);
+
+    thirdAKeys.forEach(ks -> assertEquals(0, ks.size()));
+    thirdBKeys.forEach(ks -> assertEquals(0, ks.size()));
+    thirdCKeys.forEach(ks -> assertEquals(0, ks.size()));
+  }
+
+  /**
+   * Scenario: It should be possible to clear a cache
+   */
+  @Test
+  void cachesShouldBeClearable() {
+    // Given a cache, data and keys
+    List<Cache<String, Integer>> aCaches = setupCaches(CACHE_A, String.class, Integer.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
+    List<Cache<String, Integer>> bCaches = setupCaches(CACHE_B, String.class, Integer.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
+    List<Cache<ComplexKey, ComplexValue>> cCaches = setupCaches(CACHE_C, ComplexKey.class, ComplexValue.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
+
+    fillCaches(aCaches, Map.of(oneKey1, oneValue1, oneKey2, oneValue2));
+    fillCaches(bCaches, Map.of(oneKey3, oneValue3, oneKey4, oneValue4));
+    fillCaches(cCaches, Map.of(complexKey1, complexValue1, complexKey2, complexValue2));
+
+    assertKeysPresent(aCaches, List.of(oneKey1, oneKey2));
+    assertKeysPresent(bCaches, List.of(oneKey3, oneKey4));
+    assertKeysPresent(cCaches, List.of(complexKey1, complexKey2));
+    assertValuesPresent(aCaches, Map.of(oneKey1, oneValue1, oneKey2, oneValue2));
+    assertValuesPresent(bCaches, Map.of(oneKey3, oneValue3, oneKey4, oneValue4));
+    assertValuesPresent(cCaches, Map.of(complexKey1, complexValue1, complexKey2, complexValue2));
+
+    // When the cache is cleared
+    bCaches.forEach(Cache::clear);
+    bCaches.forEach(Cache::clear);
+    cCaches.forEach(Cache::clear);
+    cCaches.forEach(Cache::clear);
+
+    // Then the data shouldn't be present
+    assertKeysPresent(aCaches, List.of(oneKey1, oneKey2));
+    assertKeysAbsent(bCaches, List.of(oneKey1, oneKey2));
+    assertKeysAbsent(cCaches, List.of(complexKey1, complexKey2));
+    assertValuesPresent(aCaches, Map.of(oneKey1, oneValue1, oneKey2, oneValue2));
+    assertValuesAbsent(bCaches, List.of(oneKey1, oneKey2));
+    assertValuesAbsent(cCaches, List.of(complexKey1, complexKey2));
+  }
+
+  /**
    * Scenario: Caches should be able to handle non primitive data
    */
   @Test
-  public void cachesShouldHandleNonPrimitives() {
+  void cachesShouldHandleNonPrimitives() {
     // Given a cache, data and keys
     List<Cache<ComplexKey, ComplexValue>> aCaches = setupCaches(CACHE_A, ComplexKey.class, ComplexValue.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
 
@@ -139,6 +220,7 @@ public class CacheTestSync {
 
   private static final String CACHE_A = "cache A " + now().getNano();
   private static final String CACHE_B = "cache B " + now().getNano();
+  private static final String CACHE_C = "cache C " + now().getNano();
   private CacheManager cacheManager1;
   private CacheManager cacheManager2;
   private CacheManager cacheManager3;
@@ -154,15 +236,17 @@ public class CacheTestSync {
   private Integer twoKey4 = 4004;
   private Integer oneValue1 = 1;
   private Integer oneValue2 = 2;
+  private Integer oneValue3 = 3;
+  private Integer oneValue4 = 4;
   private String twoValue1 = "a";
   private String twoValue2 = "b";
   private ComplexKey complexKey1 = new ComplexKey("k1", 1, new net.io_0.caja.models.Nested(true, List.of(1, 2, 3)));
   private ComplexValue complexValue1 = new ComplexValue(1L, BigDecimal.TEN, LocalDateTime.now(), new net.io_0.caja.models.Nested(true, List.of(10, 20, 30)));
-  private ComplexKey complexKey2 = new ComplexKey("k2", 2, new net.io_0.caja.models.Nested(true, List.of(2, 4, 6)));;
+  private ComplexKey complexKey2 = new ComplexKey("k2", 2, new net.io_0.caja.models.Nested(true, List.of(2, 4, 6)));
   private ComplexValue complexValue2 = new ComplexValue(2L, BigDecimal.ONE, LocalDateTime.now(), new Nested(true, List.of(20, 40, 60)));
 
   @BeforeEach
-  public void init() {
+  void init() {
     cacheManager1 = new CacheManager();
     cacheManager2 = new CacheManager(new LocalCacheConfig().setHeap(10).setTtlInSeconds(2));
     cacheManager3 = new CacheManager(new CacheManagerConfig().setCacheConfigurations(Map.of(CACHE_A, new LocalCacheConfig().setTtlInSeconds(1).setHeap(5))));
@@ -173,7 +257,7 @@ public class CacheTestSync {
   }
 
   @AfterEach
-  public void finalise() {
+  void finalise() {
     cacheManager1.close();
     cacheManager2.close();
     cacheManager3.close();
@@ -196,19 +280,19 @@ public class CacheTestSync {
   }
 
   private <K, V> void assertKeysPresent(List<Cache<K, V>> caches, List<K> keys) {
-    caches.forEach(c -> keys.forEach(k -> assertTrue(c.containsKey(k))));
+    caches.forEach(c -> keys.forEach(k -> assertTrue(c.containsKey(k), format("Cache %d", caches.indexOf(c)+1))));
   }
 
   private <K, V> void assertKeysAbsent(List<Cache<K, V>> caches, List<K> keys) {
-    caches.forEach(c -> keys.forEach(k -> assertFalse(c.containsKey(k))));
+    caches.forEach(c -> keys.forEach(k -> assertFalse(c.containsKey(k), format("Cache %d", caches.indexOf(c)+1))));
   }
 
   private <K, V> void assertValuesPresent(List<Cache<K, V>> caches, Map<K, V> data) {
-    caches.forEach(c -> data.forEach((k, v) -> assertEquals(v, c.get(k))));
+    caches.forEach(c -> data.forEach((k, v) -> assertEquals(v, c.get(k), format("Cache %d", caches.indexOf(c)+1))));
   }
 
   private <K, V> void assertValuesAbsent(List<Cache<K, V>> caches, List<K> keys) {
-    caches.forEach(c -> keys.forEach(k -> assertNull(c.get(k))));
+    caches.forEach(c -> keys.forEach(k -> assertNull(c.get(k), format("Cache %d", caches.indexOf(c)+1))));
   }
 
   private void assertKeysAbsentAfterTtl(Map<Cache, ?> cachesAndKeys, int ttlInSeconds) {
@@ -218,24 +302,24 @@ public class CacheTestSync {
   }
 
   private <K, V> void assertGetTroughFillsCache(List<Cache<K, V>> caches, Map<K, V> data) {
-    caches.forEach(c -> data.forEach((k, v) -> assertEquals(v, c.getThrough(k, () -> v))));
+    caches.forEach(c -> data.forEach((k, v) -> assertEquals(v, c.getThrough(k, () -> v), format("Cache %d", caches.indexOf(c)+1))));
   }
 
   private <K, V> void assertGetTroughUsesCache(List<Cache<K, V>> caches, Map<K, V> data) {
-    caches.forEach(c -> data.forEach((k, v) -> assertEquals(v, c.getThrough(k, Assertions::fail))));
+    caches.forEach(c -> data.forEach((k, v) -> assertEquals(v, c.getThrough(k, Assertions::fail), format("Cache %d", caches.indexOf(c)+1))));
   }
 
   private <K, V> void assertGetTroughFutureFillsCache(List<Cache<K, V>> caches, Map<K, V> data) {
-    caches.forEach(c -> data.forEach((k, v) -> assertEquals(v, await(c.getThroughFuture(k, () -> completedFuture(v))))));
+    caches.forEach(c -> data.forEach((k, v) -> assertEquals(v, await(c.getThroughFuture(k, () -> completedFuture(v))), format("Cache %d", caches.indexOf(c)+1))));
   }
 
   private <K, V> void assertGetTroughFutureUsesCache(List<Cache<K, V>> caches, Map<K, V> data) {
-    caches.forEach(c -> data.forEach((k, v) -> assertEquals(v, await(c.getThroughFuture(k, Assertions::fail)))));
+    caches.forEach(c -> data.forEach((k, v) -> assertEquals(v, await(c.getThroughFuture(k, Assertions::fail)), format("Cache %d", caches.indexOf(c)+1))));
   }
 
   private <K, V> void assertCacheRefDoesntMatter(List<Cache<K, V>> aCaches, List<Cache<K, V>> bCaches, List<K> keys) {
     IntStream.range(0, aCaches.size()).forEach(i ->
-      keys.forEach(k -> assertEquals(aCaches.get(i).get(k), bCaches.get(i).get(k)))
+      keys.forEach(k -> assertEquals(aCaches.get(i).get(k), bCaches.get(i).get(k), format("Cache %d", i+1)))
     );
   }
 
