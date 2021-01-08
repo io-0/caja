@@ -6,7 +6,6 @@ import java.util.function.Supplier;
 
 import static java.util.Objects.isNull;
 import static java.util.concurrent.CompletableFuture.completedFuture;
-import static net.io_0.caja.FnUtils.tap;
 
 /**
  * Defines all operational methods to create, access, update and delete mappings of key to value.
@@ -88,7 +87,8 @@ public interface Cache<K, V> {
    * @throws NullPointerException if the provided key is {@code null}
    */
   default V getThrough(K key, Supplier<V> valueSupplier) {
-    return containsKey(key) ? get(key) : tap(valueSupplier.get(), value -> put(key, value));
+    if (!containsKey(key)) put(key, valueSupplier.get());
+    return get(key);
   }
 
   /**

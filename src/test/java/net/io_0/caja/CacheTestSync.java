@@ -1,5 +1,6 @@
 package net.io_0.caja;
 
+import net.io_0.caja.configuration.CacheConfig.LogLevel;
 import net.io_0.caja.configuration.CacheManagerConfig;
 import net.io_0.caja.configuration.LocalCacheConfig;
 import net.io_0.caja.configuration.RemoteCacheConfig;
@@ -248,9 +249,9 @@ class CacheTestSync {
   @BeforeEach
   void init() {
     cacheManager1 = new CacheManager();
-    cacheManager2 = new CacheManager(new LocalCacheConfig().setHeap(10).setTtlInSeconds(2));
+    cacheManager2 = new CacheManager(new LocalCacheConfig().setHeap(10).setTtlInSeconds(2).setLogStatistics(LogLevel.OFF));
     cacheManager3 = new CacheManager(new CacheManagerConfig().setCacheConfigurations(Map.of(CACHE_A, new LocalCacheConfig().setTtlInSeconds(1).setHeap(5))));
-    cacheManager4 = new CacheManager(new RemoteCacheConfig().setTtlInSeconds(2).setHost("redis://localhost:6379/0"));
+    cacheManager4 = new CacheManager(new RemoteCacheConfig().setTtlInSeconds(2).setHost("redis://localhost:6379/0").setLogStatistics(LogLevel.INFO));
     cacheManager5 = new CacheManager(new CacheManagerConfig().setCacheConfigurations(
       Map.of(CACHE_A, new RemoteCacheConfig().setTtlInSeconds(1).setHost("redis://localhost:6379/0"))
     ));

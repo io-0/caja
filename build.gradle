@@ -20,7 +20,7 @@ dependencies {
   implementation 'org.ehcache:ehcache:3.9.0'
   implementation 'io.lettuce:lettuce-core:6.0.1.RELEASE'
   implementation 'org.apache.commons:commons-lang3:3.11'
-  implementation 'com.github.io-0:maja:1.5.0'
+  implementation 'com.github.io-0:maja:1.6.0'
   testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
   testImplementation 'org.awaitility:awaitility:4.0.3'
   testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'

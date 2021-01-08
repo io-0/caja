@@ -19,7 +19,7 @@ import net.io_0.caja.redis.KeyOrWildcard;
 import net.io_0.caja.redis.RedisAsyncWrapper;
 import net.io_0.caja.redis.RedisSyncWrapper;
 import net.io_0.caja.sync.Cache;
-import net.io_0.caja.sync.LoggingStatisticsCache;
+import net.io_0.caja.sync.LoggingStatisticsDecorator;
 import org.ehcache.config.builders.CacheManagerBuilder;
 import org.ehcache.config.builders.ExpiryPolicyBuilder;
 import java.time.Duration;
@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static java.util.Objects.isNull;
+import static net.io_0.caja.configuration.CacheConfig.LogLevel;
 import static org.ehcache.config.builders.CacheConfigurationBuilder.newCacheConfigurationBuilder;
 import static org.ehcache.config.builders.ResourcePoolsBuilder.heap;
 
@@ -95,11 +96,13 @@ public class CacheManager {
    */
   public <K, V> Cache<K, V> getAsSync(String name, Class<K> keyType, Class<V> valueType, CacheConfig defaultConfig) {
     CacheConfig cfg = this.config.getCacheConfigurations().getOrDefault(name, defaultConfig);
-    return new LoggingStatisticsCache<>(name,
-      cfg instanceof LocalCacheConfig
-        ? EhcacheSyncWrapper.wrap(getLocalCache(name, keyType, valueType, (LocalCacheConfig) cfg))
-        : RedisSyncWrapper.wrap(getSyncRemoteCache(name, (RemoteCacheConfig) cfg, keyType, valueType), cfg.getTtlInSeconds())
-    );
+    var cache = cfg instanceof LocalCacheConfig
+      ? EhcacheSyncWrapper.wrap(getLocalCache(name, keyType, valueType, (LocalCacheConfig) cfg))
+      : RedisSyncWrapper.wrap(getSyncRemoteCache(name, (RemoteCacheConfig) cfg, keyType, valueType), cfg.getTtlInSeconds());
+    if (!LogLevel.OFF.equals(cfg.getLogStatistics())) {
+      cache = new LoggingStatisticsDecorator<>(name, cfg.getLogStatistics(), cache);
+    }
+    return cache;
   }
 
   /**
@@ -117,11 +120,13 @@ public class CacheManager {
    */
   public <K, V> net.io_0.caja.async.Cache<K, V> getAsAsync(String name, Class<K> keyType, Class<V> valueType, CacheConfig defaultConfig) {
     CacheConfig cfg = this.config.getCacheConfigurations().getOrDefault(name, defaultConfig);
-    return new net.io_0.caja.async.LoggingStatisticsCache<>(name,
-      cfg instanceof LocalCacheConfig
-        ? EhcacheAsyncWrapper.wrap(getLocalCache(name, keyType, valueType, (LocalCacheConfig) cfg))
-        : RedisAsyncWrapper.wrap(getAsyncRemoteCache(name, (RemoteCacheConfig) cfg, keyType, valueType), cfg.getTtlInSeconds())
-    );
+    var cache = cfg instanceof LocalCacheConfig
+      ? EhcacheAsyncWrapper.wrap(getLocalCache(name, keyType, valueType, (LocalCacheConfig) cfg))
+      : RedisAsyncWrapper.wrap(getAsyncRemoteCache(name, (RemoteCacheConfig) cfg, keyType, valueType), cfg.getTtlInSeconds());
+    if (!LogLevel.OFF.equals(cfg.getLogStatistics())) {
+      cache = new net.io_0.caja.async.LoggingStatisticsDecorator<>(name, cfg.getLogStatistics(), cache);
+    }
+    return cache;
   }
 
   private <K, V> org.ehcache.Cache<K, V> getLocalCache(String name, Class<K> keyType, Class<V> valueType, LocalCacheConfig config) {
