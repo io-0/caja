@@ -16,7 +16,7 @@ repositories {
 ```Gradle
 dependencies {
   ...
-  implementation "com.github.io-0:caja:1.2.0"
+  implementation "com.github.io-0:caja:1.3.0"
   ...
 }
 ```
@@ -73,9 +73,39 @@ Cache<Integer, String> shortTermCacheAsync =
 System.out.println(await(shortTermCacheAsync.get(2))); // prints 'two', same 
 // cache with async interface
 ```
+Working with Collections or other types with sub types as values requires casting.
+```Java
+Cache<Integer, List<String>> aCache = (Cache<Integer, List<String>>)(Cache<Integer, ?>)
+  cacheManager.getAsSync("a-cache", Integer.class, List.class, String.class);
+
+aCache.put(1, List.of("one", "eins", "一"));
+System.out.println(aCache.get(1)); // prints '[one, eins, 一]'
+```
 
 Remote caches require a running redis instance.
 For testing this can be easily archived with e.g. docker:
 
 `docker run --name redis -p 6379:6379 -d redis`
 (from [redis@dockerhub](https://hub.docker.com/_/redis/)) 
+
+### Cache configuration
+If no configuration is given, the CacheManager defaults to LocalCacheConfig for all caches.
+If a LocalCacheConfig or RemoteCacheConfig is provided via CacheManager constructor, it is set as default config and used for all caches.
+One can overwrite default config by providing name specific configuration via CacheManagerConfig in CacheManager constructor.
+One can overwrite default config by providing a new default as cacheManager.getAs* parameter. This parameter will be ignored if a matching named config exists.
+
+#### Configuration priority
+1. CacheManager constructor CacheManagerConfig matching named CacheConfig (optional)
+2. cacheManager.getAs* parameter CacheConfig (optional)
+3. CacheManager constructor CacheManagerConfig DefaultCacheConfig (optional)
+4. LocalCacheConfig
+
+#### LocalCacheConfig
+* ttlInSeconds (default 1): Time to live for all cached items in seconds
+* logStatistics (default LogLevel.DEBUG): Log cache hits, misses, etc. at configured level
+* heap (default 100): Number of maximum items cached
+
+#### RemoteCacheConfig
+* ttlInSeconds (default 1): Time to live for all cached items in seconds
+* logStatistics (default LogLevel.DEBUG): Log cache hits, misses, etc. at configured level
+* host (default "redis://localhost:6379/0"): Location of remote cache

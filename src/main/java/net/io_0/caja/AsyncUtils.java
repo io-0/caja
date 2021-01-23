@@ -1,5 +1,6 @@
 package net.io_0.caja;
 
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
@@ -8,8 +9,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static java.util.Objects.isNull;
+import static lombok.AccessLevel.PRIVATE;
 
 @Slf4j
+@NoArgsConstructor(access = PRIVATE)
 public class AsyncUtils {
   public static final Duration MAX_NANO_DURATION = Duration.ofNanos(Long.MAX_VALUE);
 
