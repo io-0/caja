@@ -12,15 +12,22 @@ import java.util.function.Predicate;
 import static io.lettuce.core.codec.StringCodec.UTF8;
 import static org.apache.commons.lang3.StringUtils.removeStart;
 
-@RequiredArgsConstructor
 @Slf4j
 public class JsonObjectCodec<K, C extends KeyOrWildcard<K>, V> implements RedisCodec<C, V> {
   private final String cacheName;
   private final Class<K> keyType;
   private final Class<V> valueType;
+  private final Class<?>[] subTypes;
 
   private static final String SEPARATOR = "/";
   private static final Predicate<Class<?>> isSimpleKeyType = isAnyOf(String.class, UUID.class, Integer.class, Long.class);
+
+  public JsonObjectCodec(String cacheName, Class<K> keyType, Class<V> valueType, Class<?>... subTypes) {
+    this.cacheName = cacheName;
+    this.keyType = keyType;
+    this.valueType = valueType;
+    this.subTypes = subTypes;
+  }
 
   @Override @SuppressWarnings("unchecked")
   public C decodeKey(ByteBuffer bytes) {
@@ -32,7 +39,7 @@ public class JsonObjectCodec<K, C extends KeyOrWildcard<K>, V> implements RedisC
 
   @Override @SuppressWarnings("unchecked")
   public V decodeValue(ByteBuffer bytes) {
-    return (V) decode(bytes, valueType);
+    return (V) decode(bytes, valueType, subTypes);
   }
 
   @Override
@@ -63,8 +70,8 @@ public class JsonObjectCodec<K, C extends KeyOrWildcard<K>, V> implements RedisC
     private K key;
   }
 
-  private static Object decode(ByteBuffer bytes, Class<?> type) {
-    return Mapper.fromJson(UTF8.decodeValue(bytes), type);
+  private static Object decode(ByteBuffer bytes, Class<?> type, Class<?>... subTypes) {
+    return Mapper.fromJson(UTF8.decodeValue(bytes), type, subTypes);
   }
 
   private static ByteBuffer encode(Object value) {

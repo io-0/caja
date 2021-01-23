@@ -5,6 +5,8 @@ import net.io_0.caja.configuration.CacheManagerConfig;
 import net.io_0.caja.configuration.LocalCacheConfig;
 import net.io_0.caja.configuration.RemoteCacheConfig;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -48,11 +50,18 @@ class ReadmeExampleTest {
     net.io_0.caja.async.Cache<Integer, String> shortTermCacheAsync = cacheManager1.getAsAsync("short term cache", Integer.class, String.class);
     System.out.println(await(shortTermCacheAsync.get(2))); // prints 'two', same cache with async interface
 
+    Cache<Integer, List<String>> aCache = (Cache<Integer, List<String>>)(Cache<Integer, ?>)
+      cacheManager1.getAsSync("a-cache", Integer.class, List.class, String.class);
+
+    aCache.put(1, List.of("one", "eins", "一"));
+    System.out.println(aCache.get(1)); // prints '[one, eins, 一]'
+
     // Then
     assertFalse(shortTermCache.containsKey(1));
     assertEquals("two", shortTermCache.get(2));
     assertEquals("two", shortTermCache.getThrough(2, () -> "three"));
     assertEquals("two", await(shortTermCacheAsync.get(2)));
+    assertEquals("[one, eins, 一]", aCache.get(1).toString());
     org.awaitility.Awaitility.await().atMost(2, TimeUnit.SECONDS).until(() -> Objects.equals("three", shortTermCache.getThrough(2, () -> "three")));
   }
 }

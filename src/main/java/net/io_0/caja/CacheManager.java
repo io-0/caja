@@ -6,6 +6,7 @@ import io.lettuce.core.api.StatefulConnection;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.api.sync.RedisCommands;
+import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.io_0.caja.configuration.CacheConfig;
@@ -61,8 +62,8 @@ public class CacheManager {
    *
    * @throws IllegalArgumentException if a cache under that name exist wit different types
    */
-  public <K, V> Cache<K, V> getAsSync(String name, Class<K> keyType, Class<V> valueType) {
-    return getAsSync(name, keyType, valueType, config.getDefaultCacheConfiguration());
+  public <K, V> Cache<K, V> getAsSync(String name, Class<K> keyType, Class<V> valueType, Class<?>... valueSubTypes) {
+    return getAsSync(name, Context.ofDefaultConfig(config.getDefaultCacheConfiguration()), keyType, valueType, valueSubTypes);
   }
 
   /**
@@ -77,8 +78,8 @@ public class CacheManager {
    *
    * @throws IllegalArgumentException if a cache under that name exist wit different types
    */
-  public <K, V> net.io_0.caja.async.Cache<K, V> getAsAsync(String name, Class<K> keyType, Class<V> valueType) {
-    return getAsAsync(name, keyType, valueType, config.getDefaultCacheConfiguration());
+  public <K, V> net.io_0.caja.async.Cache<K, V> getAsAsync(String name, Class<K> keyType, Class<V> valueType, Class<?>... valueSubTypes) {
+    return getAsAsync(name, Context.ofDefaultConfig(config.getDefaultCacheConfiguration()), keyType, valueType, valueSubTypes);
   }
 
   /**
@@ -89,16 +90,15 @@ public class CacheManager {
    * @param valueType the value type the cache should use
    * @param <K> keyType
    * @param <V> valueType
-   * @param defaultConfig default configuration overwrite, won't be used if specific (named) configuration exists
    * @return created or gathered cache
    *
    * @throws IllegalArgumentException if a cache under that name exist wit different types
    */
-  public <K, V> Cache<K, V> getAsSync(String name, Class<K> keyType, Class<V> valueType, CacheConfig defaultConfig) {
-    CacheConfig cfg = this.config.getCacheConfigurations().getOrDefault(name, defaultConfig);
+  public <K, V> Cache<K, V> getAsSync(String name, Context context, Class<K> keyType, Class<V> valueType, Class<?>... valueSubTypes) {
+    CacheConfig cfg = this.config.getCacheConfigurations().getOrDefault(name, context.defaultConfig);
     var cache = cfg instanceof LocalCacheConfig
       ? EhcacheSyncWrapper.wrap(getLocalCache(name, keyType, valueType, (LocalCacheConfig) cfg))
-      : RedisSyncWrapper.wrap(getSyncRemoteCache(name, (RemoteCacheConfig) cfg, keyType, valueType), cfg.getTtlInSeconds());
+      : RedisSyncWrapper.wrap(getSyncRemoteCache(name, (RemoteCacheConfig) cfg, keyType, valueType, valueSubTypes), cfg.getTtlInSeconds());
     if (!LogLevel.OFF.equals(cfg.getLogStatistics())) {
       cache = new LoggingStatisticsDecorator<>(name, cfg.getLogStatistics(), cache);
     }
@@ -113,20 +113,50 @@ public class CacheManager {
    * @param valueType the value type the cache should use
    * @param <K> keyType
    * @param <V> valueType
-   * @param defaultConfig default configuration overwrite, won't be used if specific (named) configuration exists
    * @return created or gathered cache
    *
    * @throws IllegalArgumentException if a cache under that name exist wit different types
    */
-  public <K, V> net.io_0.caja.async.Cache<K, V> getAsAsync(String name, Class<K> keyType, Class<V> valueType, CacheConfig defaultConfig) {
-    CacheConfig cfg = this.config.getCacheConfigurations().getOrDefault(name, defaultConfig);
+  public <K, V> net.io_0.caja.async.Cache<K, V> getAsAsync(String name, Context context, Class<K> keyType, Class<V> valueType, Class<?>... valueSubTypes) {
+    CacheConfig cfg = this.config.getCacheConfigurations().getOrDefault(name, context.defaultConfig);
     var cache = cfg instanceof LocalCacheConfig
       ? EhcacheAsyncWrapper.wrap(getLocalCache(name, keyType, valueType, (LocalCacheConfig) cfg))
-      : RedisAsyncWrapper.wrap(getAsyncRemoteCache(name, (RemoteCacheConfig) cfg, keyType, valueType), cfg.getTtlInSeconds());
+      : RedisAsyncWrapper.wrap(getAsyncRemoteCache(name, (RemoteCacheConfig) cfg, keyType, valueType, valueSubTypes), cfg.getTtlInSeconds());
     if (!LogLevel.OFF.equals(cfg.getLogStatistics())) {
       cache = new net.io_0.caja.async.LoggingStatisticsDecorator<>(name, cfg.getLogStatistics(), cache);
     }
     return cache;
+  }
+
+  @Builder
+  public static class Context {
+    @Builder.Default
+    // default configuration overwrite, won't be used if specific (named) configuration exists
+    private CacheConfig defaultConfig = new LocalCacheConfig();
+
+    public static Context of() {
+      return builder().build();
+    }
+
+    public static Context ofDefaultConfig(CacheConfig dC) {
+      return builder().defaultConfig(dC).build();
+    }
+  }
+
+  /**
+   * @deprecated Use {@link #getAsSync(String, Context, Class, Class, Class...)} instead
+   */
+  @Deprecated(forRemoval = true)
+  public <K, V> Cache<K, V> getAsSync(String name, Class<K> keyType, Class<V> valueType, CacheConfig defaultConfig) {
+    return getAsSync(name, Context.ofDefaultConfig(defaultConfig), keyType, valueType);
+  }
+
+  /**
+   * @deprecated Use {@link #getAsAsync(String, Context, Class, Class, Class...)} instead
+   */
+  @Deprecated(forRemoval = true)
+  public <K, V> net.io_0.caja.async.Cache<K, V> getAsAsync(String name, Class<K> keyType, Class<V> valueType, CacheConfig defaultConfig) {
+    return getAsAsync(name, Context.ofDefaultConfig(defaultConfig), keyType, valueType);
   }
 
   private <K, V> org.ehcache.Cache<K, V> getLocalCache(String name, Class<K> keyType, Class<V> valueType, LocalCacheConfig config) {
@@ -144,16 +174,16 @@ public class CacheManager {
     return localCache;
   }
 
-  private <K, V> RedisCommands<KeyOrWildcard<K>, V> getSyncRemoteCache(String name, RemoteCacheConfig config, Class<K> keyType, Class<V> valueType) {
-    return getRemoteCacheConnection(name, config, keyType, valueType).sync();
+  private <K, V> RedisCommands<KeyOrWildcard<K>, V> getSyncRemoteCache(String name, RemoteCacheConfig config, Class<K> keyType, Class<V> valueType, Class<?>... valueSubTypes) {
+    return getRemoteCacheConnection(name, config, keyType, valueType, valueSubTypes).sync();
   }
 
-  private <K, V> RedisAsyncCommands<KeyOrWildcard<K>, V> getAsyncRemoteCache(String name, RemoteCacheConfig config, Class<K> keyType, Class<V> valueType) {
-    return getRemoteCacheConnection(name, config, keyType, valueType).async();
+  private <K, V> RedisAsyncCommands<KeyOrWildcard<K>, V> getAsyncRemoteCache(String name, RemoteCacheConfig config, Class<K> keyType, Class<V> valueType, Class<?>... valueSubTypes) {
+    return getRemoteCacheConnection(name, config, keyType, valueType, valueSubTypes).async();
   }
 
   @SuppressWarnings("unchecked")
-  private <K, V> StatefulRedisConnection<KeyOrWildcard<K>, V> getRemoteCacheConnection(String name, RemoteCacheConfig config, Class<K> keyType, Class<V> valueType) {
+  private <K, V> StatefulRedisConnection<KeyOrWildcard<K>, V> getRemoteCacheConnection(String name, RemoteCacheConfig config, Class<K> keyType, Class<V> valueType, Class<?>... valueSubTypes) {
     String host = config.getHost();
 
     RedisClient client = clients.get(host);
@@ -165,7 +195,7 @@ public class CacheManager {
 
     StatefulRedisConnection<KeyOrWildcard<K>, V> connection = (StatefulRedisConnection<KeyOrWildcard<K>, V>) connections.get(String.format("%s|%s", name, host));
     if (isNull(connection)) {
-      connection = client.connect(new JsonObjectCodec<>(name, keyType, valueType));
+      connection = client.connect(new JsonObjectCodec<>(name, keyType, valueType, valueSubTypes));
       connections.put(String.format("%s|%s", name, host), connection);
       log.debug("{}: created connection with {}", name, config);
     }

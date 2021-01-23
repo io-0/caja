@@ -73,6 +73,14 @@ Cache<Integer, String> shortTermCacheAsync =
 System.out.println(await(shortTermCacheAsync.get(2))); // prints 'two', same 
 // cache with async interface
 ```
+Working with Collections or other types with sub types as values requires casting.
+```Java
+Cache<Integer, List<String>> aCache = (Cache<Integer, List<String>>)(Cache<Integer, ?>)
+  cacheManager.getAsSync("a-cache", Integer.class, List.class, String.class);
+
+aCache.put(1, List.of("one", "eins", "一"));
+System.out.println(aCache.get(1)); // prints '[one, eins, 一]'
+```
 
 Remote caches require a running redis instance.
 For testing this can be easily archived with e.g. docker:

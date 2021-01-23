@@ -11,9 +11,7 @@ import net.io_0.caja.sync.Cache;
 import org.junit.jupiter.api.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -24,6 +22,7 @@ import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.concurrent.CompletableFuture.failedFuture;
 import static net.io_0.caja.Asserts.assertCollectionEquals;
 import static net.io_0.caja.AsyncUtils.await;
+import static net.io_0.caja.CacheManager.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -42,8 +41,8 @@ class CacheTestSync {
     // Given a cache, data and keys
     List<Cache<String, Integer>> aCaches = setupCaches(CACHE_A, String.class, Integer.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
     List<Cache<Integer, String>> bCaches = List.of(
-      cacheManager3.getAsSync(CACHE_B, Integer.class, String.class, new LocalCacheConfig().setTtlInSeconds(2).setHeap(5)),
-      cacheManager5.getAsSync(CACHE_B, Integer.class, String.class, new LocalCacheConfig().setTtlInSeconds(2))
+      cacheManager3.getAsSync(CACHE_B, Context.ofDefaultConfig(new LocalCacheConfig().setTtlInSeconds(2).setHeap(5)), Integer.class, String.class),
+      cacheManager5.getAsSync(CACHE_B, Context.ofDefaultConfig(new LocalCacheConfig().setTtlInSeconds(2)), Integer.class, String.class)
     );
 
     // When the data is cached
@@ -219,6 +218,49 @@ class CacheTestSync {
     assertValuesPresent(aCaches, Map.of(complexKey1, complexValue1, complexKey2, complexValue2));
   }
 
+  /**
+   * Scenario: Caches should be able to handle Collections and Maps as value data
+   */
+  @Test
+  void cachesShouldHandleCollectionsAndMapValues() {
+    // Given a cache, data and keys
+    List<Cache<String, List<ComplexValue>>> aCaches = (List<Cache<String, List<ComplexValue>>>)(List<?>)
+      setupCaches(CACHE_A, String.class, List.class, ComplexValue.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
+    List<Cache<String, Set<ComplexValue>>> bCaches = (List<Cache<String, Set<ComplexValue>>>)(List<?>)
+      setupCaches(CACHE_B, String.class, Set.class, ComplexValue.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
+    List<Cache<String, Map<String, ComplexValue>>> cCaches = (List<Cache<String, Map<String, ComplexValue>>>)(List<?>)
+      setupCaches(CACHE_C, String.class, Map.class, String.class, ComplexValue.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
+
+    // When the data is cached
+    fillCaches(aCaches, Map.of(oneKey1, List.of(complexValue1, complexValue2), oneKey2, List.of(complexValue2, complexValue1)));
+    fillCaches(bCaches, Map.of(oneKey1, Set.of(complexValue1, complexValue2), oneKey2, Set.of(complexValue2, complexValue1)));
+    fillCaches(cCaches, Map.of(oneKey1, Map.of(oneKey1, complexValue1, oneKey2, complexValue2), oneKey2, Map.of(oneKey3, complexValue2, oneKey4, complexValue1)));
+
+    // Then the data should be retrievable
+    assertKeysPresent(aCaches, List.of(oneKey1, oneKey2));
+    assertKeysPresent(bCaches, List.of(oneKey1, oneKey2));
+    assertKeysPresent(cCaches, List.of(oneKey1, oneKey2));
+    assertValuesPresent(aCaches, Map.of(oneKey1, List.of(complexValue1, complexValue2), oneKey2, List.of(complexValue2, complexValue1)));
+    assertValuesPresent(bCaches, Map.of(oneKey1, Set.of(complexValue1, complexValue2), oneKey2, Set.of(complexValue2, complexValue1)));
+    assertValuesPresent(cCaches, Map.of(oneKey1, Map.of(oneKey1, complexValue1, oneKey2, complexValue2), oneKey2, Map.of(oneKey3, complexValue2, oneKey4, complexValue1)));
+  }
+
+  /**
+   * Scenario: Caches should work with empty context
+   */
+  @Test
+  void cachesShouldWorkWithEmptyContext() {
+    // Given a cache, data and keys
+    Cache<String, Integer> cache = cacheManager1.getAsSync(CACHE_A, Context.of(), String.class, Integer.class);
+
+    // When the data is cached
+    cache.put(oneKey1, oneValue1);
+
+    // Then the data should be retrievable
+    assertTrue(cache.containsKey(oneKey1));
+    assertEquals(oneValue1, cache.get(oneKey1));
+  }
+
   private static final String CACHE_A = "cache A " + now().getNano();
   private static final String CACHE_B = "cache B " + now().getNano();
   private static final String CACHE_C = "cache C " + now().getNano();
@@ -269,6 +311,18 @@ class CacheTestSync {
   private <K, V> List<Cache<K, V>> setupCaches(String name, Class<K> keyType, Class<V> valueType, CacheManager... managers) {
     return Arrays.stream(managers)
       .map(m -> m.getAsSync(name, keyType, valueType))
+      .collect(Collectors.toList());
+  }
+
+  private <K, V, W> List<Cache<K, V>> setupCaches(String name, Class<K> keyType, Class<V> valueType, Class<W> valueSubType, CacheManager... managers) {
+    return Arrays.stream(managers)
+      .map(m -> m.getAsSync(name, keyType, valueType, valueSubType))
+      .collect(Collectors.toList());
+  }
+
+  private <K, V> List<Cache<K, V>> setupCaches(String name, Class<K> keyType, Class<V> valueType, Class<?> valueSubType1, Class<?> valueSubType2, CacheManager... managers) {
+    return Arrays.stream(managers)
+      .map(m -> m.getAsSync(name, keyType, valueType, valueSubType1, valueSubType2))
       .collect(Collectors.toList());
   }
 
