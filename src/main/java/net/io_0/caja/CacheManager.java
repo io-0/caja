@@ -2,10 +2,13 @@ package net.io_0.caja;
 
 import io.lettuce.core.AbstractRedisClient;
 import io.lettuce.core.RedisClient;
+import io.lettuce.core.RedisURI;
 import io.lettuce.core.api.StatefulConnection;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.api.sync.RedisCommands;
+import io.lettuce.core.masterreplica.MasterReplica;
+import io.lettuce.core.masterreplica.StatefulRedisMasterReplicaConnection;
 import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +26,7 @@ import net.io_0.caja.sync.Cache;
 import net.io_0.caja.sync.LoggingStatisticsDecorator;
 import org.ehcache.config.builders.CacheManagerBuilder;
 import org.ehcache.config.builders.ExpiryPolicyBuilder;
+
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -193,9 +197,9 @@ public class CacheManager {
       log.debug("{}: created client with {}", name, config);
     }
 
-    StatefulRedisConnection<KeyOrWildcard<K>, V> connection = (StatefulRedisConnection<KeyOrWildcard<K>, V>) connections.get(String.format("%s|%s", name, host));
+    StatefulRedisMasterReplicaConnection<KeyOrWildcard<K>, V> connection = (StatefulRedisMasterReplicaConnection<KeyOrWildcard<K>, V>) connections.get(String.format("%s|%s", name, host));
     if (isNull(connection)) {
-      connection = client.connect(new JsonObjectCodec<>(name, keyType, valueType, valueSubTypes));
+      connection = MasterReplica.connect(client, new JsonObjectCodec<>(name, keyType, valueType, valueSubTypes), RedisURI.create(host));
       connections.put(String.format("%s|%s", name, host), connection);
       log.debug("{}: created connection with {}", name, config);
     }
