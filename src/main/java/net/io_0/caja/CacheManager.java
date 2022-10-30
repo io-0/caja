@@ -1,6 +1,7 @@
 package net.io_0.caja;
 
 import io.lettuce.core.AbstractRedisClient;
+import io.lettuce.core.ReadFrom;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.api.StatefulConnection;
@@ -200,11 +201,28 @@ public class CacheManager {
     StatefulRedisMasterReplicaConnection<KeyOrWildcard<K>, V> connection = (StatefulRedisMasterReplicaConnection<KeyOrWildcard<K>, V>) connections.get(String.format("%s|%s", name, host));
     if (isNull(connection)) {
       connection = MasterReplica.connect(client, new JsonObjectCodec<>(name, keyType, valueType, valueSubTypes), RedisURI.create(host));
+      connection.setReadFrom(toLettuceReadFrom(config.getReadFrom()));
       connections.put(String.format("%s|%s", name, host), connection);
       log.debug("{}: created connection with {}", name, config);
     }
 
     return connection;
+  }
+
+  private ReadFrom toLettuceReadFrom(RemoteCacheConfig.ReadFrom readFrom) {
+    switch(readFrom) {
+      case UPSTREAM:
+        return ReadFrom.UPSTREAM;
+      case UPSTREAM_PREFERRED:
+        return ReadFrom.UPSTREAM_PREFERRED;
+      case REPLICA:
+        return ReadFrom.REPLICA;
+      case REPLICA_PREFERRED:
+        return ReadFrom.REPLICA_PREFERRED;
+      default:
+        log.warn("{} is not supported. Read from UPSTREAM is used as fallback.", readFrom);
+        return ReadFrom.UPSTREAM;
+    }
   }
 
   private Map<String, RedisClient> clients = new ConcurrentHashMap<>();
