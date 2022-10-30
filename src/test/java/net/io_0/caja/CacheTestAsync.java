@@ -42,7 +42,7 @@ class CacheTestAsync {
   @Test
   void cacheAndRetrieveData() {
     // Given a cache, data and keys
-    List<Cache<String, Integer>> aCaches = setupCaches(CACHE_A, String.class, Integer.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5);
+    List<Cache<String, Integer>> aCaches = setupCaches(CACHE_A, String.class, Integer.class, cacheManager1, cacheManager2, cacheManager3, cacheManager4, cacheManager5, cacheManager6);
     List<Cache<Integer, String>> bCaches = List.of(
       cacheManager3.getAsAsync(CACHE_B, Context.ofDefaultConfig(new LocalCacheConfig().setTtlInSeconds(2).setHeap(5)), Integer.class, String.class),
       cacheManager5.getAsAsync(CACHE_B, Context.ofDefaultConfig(new LocalCacheConfig().setTtlInSeconds(2)), Integer.class, String.class)
@@ -272,6 +272,7 @@ class CacheTestAsync {
   private CacheManager cacheManager3;
   private CacheManager cacheManager4;
   private CacheManager cacheManager5;
+  private CacheManager cacheManager6;
   private String oneKey1 = "ok1";
   private String oneKey2 = "ok2";
   private String oneKey3 = "ok3";
@@ -300,6 +301,7 @@ class CacheTestAsync {
     cacheManager5 = new CacheManager(new CacheManagerConfig().setCacheConfigurations(
       Map.of(CACHE_A, new RemoteCacheConfig().setTtlInSeconds(1).setHost("redis://localhost:6379/0"))
     ));
+    cacheManager6 = new CacheManager(new RemoteCacheConfig().setTtlInSeconds(2).setHost("redis-sentinel://localhost:26379/0#mymaster").setReadFrom(RemoteCacheConfig.ReadFrom.REPLICA));
   }
 
   @AfterEach
@@ -309,6 +311,7 @@ class CacheTestAsync {
     cacheManager3.close();
     cacheManager4.close();
     cacheManager5.close();
+    cacheManager6.close();
   }
 
   private <K, V> List<Cache<K, V>> setupCaches(String name, Class<K> keyType, Class<V> valueType, CacheManager... managers) {
