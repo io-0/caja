@@ -16,7 +16,7 @@ repositories {
 ```Gradle
 dependencies {
   ...
-  implementation "com.github.io-0:caja:1.3.0"
+  implementation "com.github.io-0:shoja:1.4.0"
   ...
 }
 ```
@@ -83,10 +83,9 @@ System.out.println(aCache.get(1)); // prints '[one, eins, 一]'
 ```
 
 Remote caches require a running redis instance.
-For testing this can be easily archived with e.g. docker:
+For testing this can be easily archived with e.g. docker compose:
 
-`docker run --name redis -p 6379:6379 -d redis`
-(from [redis@dockerhub](https://hub.docker.com/_/redis/)) 
+`docker compose up`
 
 ### Cache configuration
 If no configuration is given, the CacheManager defaults to LocalCacheConfig for all caches.
@@ -108,4 +107,6 @@ One can overwrite default config by providing a new default as cacheManager.getA
 #### RemoteCacheConfig
 * ttlInSeconds (default 1): Time to live for all cached items in seconds
 * logStatistics (default LogLevel.DEBUG): Log cache hits, misses, etc. at configured level
-* host (default "redis://localhost:6379/0"): Location of remote cache
+* host (default "redis://localhost:6379/0"): Location of remote cache. Redis supports auto discovery. In case of a standalone Master/Replica setup, by providing one host (master or replica), 
+  the other nodes which belong to the Master/Replica setup will automatically be discovered and used for connections. Furthermore, it is possible to connect to a Redis sentinel setup, for example with "redis-sentinel://localhost:26379,localhost:26380/0#mymaster".
+* readFrom (default UPSTREAM): Defines in a Master/Replica setup from which Nodes data is read
