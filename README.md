@@ -83,10 +83,9 @@ System.out.println(aCache.get(1)); // prints '[one, eins, 一]'
 ```
 
 Remote caches require a running redis instance.
-For testing this can be easily archived with e.g. docker:
+For testing this can be easily archived with e.g. docker compose:
 
-`docker run --name redis -p 6379:6379 -d redis`
-(from [redis@dockerhub](https://hub.docker.com/_/redis/)) 
+`docker compose up`
 
 ### Cache configuration
 If no configuration is given, the CacheManager defaults to LocalCacheConfig for all caches.
