@@ -1,8 +1,8 @@
 plugins {
-  id "io.freefair.lombok" version "8.0.1"
+  id "io.freefair.lombok" version "8.6"
   id 'java-library'
   id 'maven-publish'
-  id 'com.github.ben-manes.versions' version '0.47.0'
+  id 'com.github.ben-manes.versions' version '0.51.0'
   id 'se.patrikerdes.use-latest-versions' version '0.2.18'
 }
 
@@ -16,14 +16,14 @@ repositories {
 }
 
 dependencies {
-  implementation 'ch.qos.logback:logback-classic:1.4.8'
+  implementation 'ch.qos.logback:logback-classic:1.5.0'
   implementation 'org.ehcache:ehcache:3.10.8'
-  implementation 'io.lettuce:lettuce-core:6.2.4.RELEASE'
-  implementation 'org.apache.commons:commons-lang3:3.12.0'
-  implementation 'com.github.io-0:maja:1.7.2'
-  testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.3'
+  implementation 'io.lettuce:lettuce-core:6.3.1.RELEASE'
+  implementation 'org.apache.commons:commons-lang3:3.14.0'
+  implementation 'com.github.io-0:maja:1.8.1'
+  testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
   testImplementation 'org.awaitility:awaitility:4.2.0'
-  testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.3'
+  testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
 }
 
 test {
