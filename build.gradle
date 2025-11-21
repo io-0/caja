@@ -1,29 +1,39 @@
 plugins {
-  id "io.freefair.lombok" version "8.6"
+  id 'io.freefair.lombok' version '9.1.0'
   id 'java-library'
   id 'maven-publish'
-  id 'com.github.ben-manes.versions' version '0.51.0'
-  id 'se.patrikerdes.use-latest-versions' version '0.2.18'
+  id 'com.github.ben-manes.versions' version '0.53.0'
+  id 'se.patrikerdes.use-latest-versions' version '0.2.19'
+}
+
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(21)
+  }
 }
 
 group = 'net.io_0'
-version = "1.4.3"
-sourceCompatibility = 17
+version = '1.4.3'
 
 repositories {
   mavenCentral()
-  maven { url "https://jitpack.io" }
+  maven { url 'https://jitpack.io' }
+}
+
+ext {
+  junitVersion = '6.0.1'
 }
 
 dependencies {
-  implementation 'ch.qos.logback:logback-classic:1.5.0'
-  implementation 'org.ehcache:ehcache:3.10.8'
-  implementation 'io.lettuce:lettuce-core:6.3.1.RELEASE'
-  implementation 'org.apache.commons:commons-lang3:3.14.0'
-  implementation 'com.github.io-0:maja:1.8.1'
-  testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
-  testImplementation 'org.awaitility:awaitility:4.2.0'
-  testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
+  implementation 'ch.qos.logback:logback-classic:1.5.21'
+  implementation 'org.ehcache:ehcache:3.11.1'
+  implementation 'io.lettuce:lettuce-core:6.8.1.RELEASE'
+  implementation 'org.apache.commons:commons-lang3:3.20.0'
+  implementation 'com.github.io-0:maja:1.8.4'
+  testImplementation 'org.awaitility:awaitility:4.3.0'
+  testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
+  testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
+  testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 test {
@@ -39,7 +49,7 @@ publishing {
 }
 
 // disallow release candidates as upgradable versions from stable
-dependencyUpdates.configure {
+tasks.named('dependencyUpdates').configure {
   def isNonStable = { String version ->
     def stableKeyword = ['RELEASE', 'FINAL', 'GA'].any { String kw -> version.toUpperCase().contains(kw) }
     return !stableKeyword && !(version ==~ /^[0-9,.v-]+(-r)?$/)

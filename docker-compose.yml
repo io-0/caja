@@ -35,6 +35,6 @@ services:
       - redis
       - redis-replica
     ports:
-      - '26379-26381:26379'
+      - '26379-26381'
     networks:
       - app-tier
