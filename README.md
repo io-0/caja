@@ -16,7 +16,7 @@ repositories {
 ```Gradle
 dependencies {
   ...
-  implementation "com.github.io-0:caja:1.4.4"
+  implementation "com.github.io-0:caja:1.4.5"
   ...
 }
 ```
