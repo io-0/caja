@@ -37,7 +37,7 @@ public class RedisSyncWrapper {
       }
 
       private List<KeyOrWildcard<K>> fetchKeys() {
-        return cache.keys(KeyOrWildcard.wildcard());
+        return cache.keysLegacy(KeyOrWildcard.wildcard());
       }
 
       @Override @SuppressWarnings("unchecked")

@@ -42,7 +42,7 @@ public class RedisAsyncWrapper {
       }
 
       private CompletableFuture<List<KeyOrWildcard<K>>> fetchKeys() {
-        return cache.keys(KeyOrWildcard.wildcard()).toCompletableFuture();
+        return cache.keysLegacy(KeyOrWildcard.wildcard()).toCompletableFuture();
       }
 
       @Override @SuppressWarnings("unchecked")
